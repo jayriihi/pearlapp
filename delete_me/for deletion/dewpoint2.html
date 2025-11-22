@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dew Point Chart with Striped Background</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <h1>Dew Point Chart</h1>
+    <canvas id="dewPointChart"></canvas>
+    <script>
+        // Plugin for drawing colored background
+        const backgroundPlugin = {
+            id: 'backgroundPlugin',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const top = chartArea.top;
+                const bottom = chartArea.bottom;
+                const height = bottom - top;
+
+                // Define ranges and colors
+                const ranges = [
+                    { color: 'red', start: 0, end: height * 0.167 },
+                    { color: 'orange', start: height * 0.166, end: height * 0.332 },
+                    { color: 'yellow', start: height * 0.332, end: height * 0.498 },
+                    { color: 'green', start: height * 0.498, end: height * 0.664 },
+                    { color: 'lightblue', start: height * 0.664, end: height * 0.83 },
+                    { color: 'blue', start: height * 0.83, end: height }
+                ];
+
+                ranges.forEach(range => {
+                    ctx.fillStyle = range.color;
+                    ctx.fillRect(chartArea.left, top + range.start, chartArea.right - chartArea.left, range.end - range.start);
+                });
+            }
+        };
+
+ 
+
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dew Point (°F)',
+                        data: dataPoints,
+                        borderColor: 'rgba(0, 0, 0, 0.7)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)', // Optional: use a semi-transparent background for the line chart
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, h'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Dew Point (°F)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                },
+                plugins: [backgroundPlugin]
+            });
+            </script>
+</body>
+</html>

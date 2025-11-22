@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error</title>
+    <style>
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .sheet-container {
+            width: 365px; /* Adjust width to fit the content */
+            height: 700px; /* Adjust height to fit the content */
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        h3 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="center-content">
+        <h1>{{ message }}</h1>
+        <h4>MAROPS/BWS have lost data connection with Crescent station.<br>In the mean time here is the latest from Commissioner's</h3>
+        <div>
+            <h3>NMB past hour winds</h4>
+        </div>
+
+        <!-- Embed Google Sheet -->
+        <iframe 
+            src="https://docs.google.com/spreadsheets/d/e/2PACX-1vSjFVAmMytOHGVvqMVvxBCClSOAH13Z9eZRSHNQo4CbEl2WEE9CKAZfpJoU9Ir2rqVAWPe_0P6NGNOa/pubhtml?gid=1027007354&single=true"
+            class="sheet-container"
+            frameborder="0"
+            allowfullscreen>
+        </iframe>
+    </div>
+</body>
+
+</html>
+
+
+
+{% endblock %}
+
+
+
+
+
+
+</div>

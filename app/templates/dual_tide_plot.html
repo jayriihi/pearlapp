@@ -1,0 +1,227 @@
+<head>
+  <meta charset="UTF-8">
+  <title>Dual Tide Chart</title>
+
+  <!-- ✅ Load Chart.js BEFORE your chart scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/date-fns-tz"></script>
+  <script src="https://unpkg.com/chartjs-plugin-annotation@1.0.2"></script>
+</head>
+
+<body>
+  <h2>Tidal Flow (Bars) & Tide Height (Line)</h2>
+
+  <canvas id="flowChart" height="250"></canvas>
+  <canvas id="heightChart" height="250"></canvas>
+  <canvas id="slopeChart" height="100"></canvas>
+
+
+
+  <script>
+    const thresholds = JSON.parse('{{ thresholds_json | safe }}');
+    const flowData = JSON.parse('{{ flow_data_json | safe }}');
+    const heightData = JSON.parse('{{ height_data_json | safe }}');
+    console.log("RAW slopeData JSON:", `{{ slope_data_json | safe }}`);
+    const slopeData = JSON.parse('{{ slope_data_json | safe }}'); // NEW
+    const maxSlope = JSON.parse('{{ max_slope_json | safe }}');
+    const fixedMaxY = 0.35;  // headroom-added y-axis cap
+
+    // FLOW BAR CHART
+    const flowCtx = document.getElementById('flowChart').getContext('2d');
+    new Chart(flowCtx, {
+      type: 'bar',
+      data: {
+        labels: flowData.map(p => p.time),
+        datasets: [{
+          label: 'Tidal Flow Change',
+          data: flowData.map(p => p.difference),
+          backgroundColor: 'rgba(54, 162, 235, 1)'
+        }]
+      },
+      options: {
+        scales: {
+          x: { type: 'time', time: { unit: 'hour' } },
+          y: { title: { display: true, text: 'Height Δ (m)' } }
+        }
+      }
+    });
+
+    // HEIGHT LINE CHART
+    const heightCtx = document.getElementById('heightChart').getContext('2d');
+    new Chart(heightCtx, {
+      type: 'line',
+      data: {
+        labels: heightData.map(p => p.time),
+        datasets: [{
+          label: 'Tide Height',
+          data: heightData.map(p => p.height),
+          borderColor: 'green',
+          tension: 0.4
+        }]
+      },
+      options: {
+        scales: {
+          x: { type: 'time', time: { unit: 'hour' } },
+          y: { title: { display: true, text: 'Tide Height (m)' } }
+        }
+      }
+    });
+
+    const colorMap = {
+      "very weak": "#b9e1f2",
+      "weak": "#7bcde8",
+      "moderate": "#2fa8dd",
+      "strong": "#f4a261",
+      "very strong": "#e63946"
+    };
+
+
+
+    if (thresholds?.length === 5) {
+      const slopeCtx = document.getElementById('slopeChart').getContext('2d');
+      new Chart(slopeCtx, {
+        type: 'bar',
+        data: {
+          labels: slopeData.map(p => p.time),
+          datasets: [{
+            label: 'Tide Flow (m/hr)',
+            data: slopeData.map(p => p.slope),
+            backgroundColor: slopeData.map(p => {
+              console.log("Color debug:", p);  // 🐞 Log each point
+
+              if (!colorMap[p.strength]) {
+                console.warn("⚠️ Unknown strength:", p.strength);  // 👈 insert here
+              }
+              const baseColor = colorMap[p.strength] || '#ccc';
+              const colorWithAlpha = baseColor.replace('rgb', 'rgba').replace(')', ', 1.0)');
+              return colorWithAlpha;
+              console.log("Base:", baseColor, "| Alpha:", alpha, "| Final:", colorWithAlpha);
+
+            })
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              min: -fixedMaxY,
+              max: fixedMaxY,
+              ticks: {
+                stepSize: 0.05
+              },
+              title: {
+                display: true,
+                text: 'Rate of Change (m/hr)'
+              }
+            },
+            x: {
+              type: 'time',
+              time: {
+                zone: 'America/Bermuda',  // ✅ auto handles DST!
+                displayFormats: {
+                  hour: 'EEE d MMM ha'  // e.g. "12 Apr 11AM"
+                },
+                tooltipFormat: 'EEE d MMM , h:mm a'  // optional: more detail in tooltips
+              },
+              ticks: {
+                autoSkip: true,
+                maxRotation: 45,
+                minRotation: 30
+              },
+              title: {
+                display: true,
+                text: 'Date and Time'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const dataPoint = slopeData[context.dataIndex];
+                  const strength = dataPoint.strength?.replace(/\b\w/g, l => l.toUpperCase()) || "Unknown";
+                  return `Flow Strength: ${strength}`;
+                }
+              }
+            }
+          }
+        }
+        /*
+        annotation: {
+          annotations: {
+            band1: {
+              type: 'box',
+              yMin: -thresholds[0],
+              yMax: thresholds[0],
+              backgroundColor: 'rgba(217,236,242,0.25)'  // same as #d9ecf2, very weak
+            },
+            band2: {
+              type: 'box',
+              yMin: -thresholds[1],
+              yMax: -thresholds[0],
+              backgroundColor: 'rgba(166,220,239,0.2)'  // same as #a6dcef, weak
+            },
+            band2b: {
+              type: 'box',
+              yMin: thresholds[0],
+              yMax: thresholds[1],
+              backgroundColor: 'rgba(166,220,239,0.2)'  // weak
+            },
+            band3: {
+              type: 'box',
+              yMin: -thresholds[2],
+              yMax: -thresholds[1],
+              backgroundColor: 'rgba(94,174,228,0.15)'  // same as #5eaee4, moderate
+            },
+            band3b: {
+              type: 'box',
+              yMin: thresholds[1],
+              yMax: thresholds[2],
+              backgroundColor: 'rgba(94,174,228,0.15)'  // moderate
+            },
+            band4: {
+              type: 'box',
+              yMin: -thresholds[3],
+              yMax: -thresholds[2],
+              backgroundColor: 'rgba(244,162,97,0.12)'  // same as #f4a261, strong
+            },
+            band4b: {
+              type: 'box',
+              yMin: thresholds[2],
+              yMax: thresholds[3],
+              backgroundColor: 'rgba(244,162,97,0.12)'  // strong
+            },
+            band5: {
+              type: 'box',
+              yMin: -thresholds[4],
+              yMax: -thresholds[3],
+              backgroundColor: 'rgba(230,57,70,0.08)' // very strong
+            },
+            band5b: {
+              type: 'box',
+              yMin: thresholds[3],
+              yMax: thresholds[4],
+              backgroundColor: 'rgba(230,57,70,0.08)' // very strong
+            }
+          }            
+        }*/
+      });
+    }  else {
+      console.error('Thresholds not loaded correctly:', thresholds);
+    }
+
+
+  </script>
+
+  <div style="margin-top:10px;">
+    <span style="background-color:#b9e1f2; padding:4px;">Very Weak <small>(0–25th %)</small></span>
+    <span style="background-color:#7bcde8; padding:4px;">Weak <small>(25–50th %)</small></span>
+    <span style="background-color:#2fa8dd; padding:4px; color:white;">Moderate <small>(50–75th %)</small></span>
+    <span style="background-color:#f4a261; padding:4px;">Strong <small>(75–95th %)</small></span>
+    <span style="background-color:#e63946; padding:4px; color:white;">Very Strong <small>(95–99th+ %)</small></span>
+  </div>
+
+
+
+
+</body>

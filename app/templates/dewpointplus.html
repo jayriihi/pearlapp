@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}
+Bermuda Dew Point 3-Day Forecast
+{% endblock %}
+
+{% block content %}
+<div class="container py-4 px-3">
+  <!-- Main Heading -->
+  <h1 style="font-size: 1.75rem; text-align: center; margin-bottom: 2rem;">
+    Bermuda Dew Point, Temperature, and Humidity 3-Day Forecast
+  </h1>
+
+  <!-- Chart Section -->
+  <div class="row mb-5">
+    <div class="col-md-12">
+      <div class="chart-container" style="position: relative; height: 400px; width: 100%;">
+        <canvas id="dewPointChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .dew-point-table {
+      max-width: 700px;
+      /* Reduce width for a narrower look */
+      margin: 5px auto 0 !important;
+      padding-top: 0 !important;
+    }
+
+    .dew-point-table table {
+      font-size: 0.75rem;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .dew-point-table th,
+    .dew-point-table td {
+      padding: 2px 5px;
+      /* Reduce padding */
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .dew-point-table {
+        max-width: 90%;
+        /* Adjust for smaller screens */
+      }
+
+      .dew-point-table th,
+      .dew-point-table td {
+        padding: 2px 3px;
+        /* More compact */
+      }
+    }
+  </style>
+
+
+  <!-- Dew Point Explanation Table -->
+  <div class="mb-5 dew-point-table">
+    <h2 style="font-size: 1rem; margin-bottom: 0.5rem;">
+      How the dew point feels when exercising outdoors:
+    </h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th style="width: 30%; font-size: 0.75rem;">Dew Point Range</th>
+          <th style="width: 70%; font-size: 0.75rem;">How It Feels</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background-color: white; color: black;">
+          <td>80+</td>
+          <td>Stay indoors with the AC on!!</td>
+        </tr>
+        <tr style="background-color: darkred; color: white;">
+          <td>75–80</td>
+          <td>Extremely uncomfortable</td>
+        </tr>
+        <tr style="background-color: red; color: black;">
+          <td>70–74</td>
+          <td>Very uncomfortable</td>
+        </tr>
+        <tr style="background-color: orange; color: black;">
+          <td>65–69</td>
+          <td>Moderately uncomfortable</td>
+        </tr>
+        <tr style="background-color: yellow; color: black;">
+          <td>60–64</td>
+          <td>Slightly uncomfortable</td>
+        </tr>
+        <tr style="background-color: green; color: white;">
+          <td>55–59</td>
+          <td>Comfortable</td>
+        </tr>
+        <tr style="background-color: blue; color: white;">
+          <td>50–54</td>
+          <td>Very comfortable</td>
+        </tr>
+        <tr style="background-color: white; color: black;">
+          <td>0–50</td>
+          <td>Won't break a sweat!!</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+
+  <!--<table class="table table-bordered">
+      <thead class="thead-light">
+        <tr>
+          <th style="font-size: 0.875rem;">Dew Point Range</th>
+          <th style="font-size: 0.875rem;">How It Feels</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-size: 0.875rem;">80+</td>
+          <td style="font-size: 0.875rem;">Stay indoors with the AC on!!</td>
+        </tr>
+        <tr class="table-danger">
+          <td style="font-size: 0.875rem;">75–80</td>
+          <td style="font-size: 0.875rem;">Extremely uncomfortable</td>
+        </tr>
+        <tr class="table-warning">
+          <td style="font-size: 0.875rem;">70–74</td>
+          <td style="font-size: 0.875rem;">Very uncomfortable</td>
+        </tr>
+        <tr class="table-info">
+          <td style="font-size: 0.875rem;">65–69</td>
+          <td style="font-size: 0.875rem;">Moderately uncomfortable</td>
+        </tr>
+        <tr class="table-success">
+          <td style="font-size: 0.875rem;">60–64</td>
+          <td style="font-size: 0.875rem;">Slightly uncomfortable</td>
+        </tr>
+        <tr>
+          <td style="font-size: 0.875rem;">55–59</td>
+          <td style="font-size: 0.875rem;">Comfortable</td>
+        </tr>
+        <tr>
+          <td style="font-size: 0.875rem;">50–54</td>
+          <td style="font-size: 0.875rem;">Very comfortable</td>
+        </tr>
+        <tr>
+          <td style="font-size: 0.875rem;">0–50</td>
+          <td style="font-size: 0.875rem;">Won't break a sweat!!</td>
+        </tr>        
+      </tbody>
+    </table> -->
+</div>
+
+<!-- External Links Section -->
+<div class="mb-5">
+  <div>
+    <div class="text-center">
+      <a class="d-flex flex-column align-items-center justify-content-center" href="https://www.alextran.org/dew-point/"
+        target="_blank" style="max-width: 300px; margin: 0 auto;">
+        <img src="/static/wordpress.png" alt="link" style="margin-bottom: 10px; height: 50px; border-radius: 50%;">
+        <span style="font-size: 0.9rem; word-wrap: break-word;">
+          Link to an interesting explanation of why dew point is a great indicator of how working outdoors will feel
+        </span>
+      </a>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script>
+  // Chart.js plugin for drawing background color bands
+  const colorBandsPlugin = {
+    id: 'colorBandsPlugin',
+    beforeDraw: (chart) => {
+      const ctx = chart.ctx;
+      const yAxis = chart.scales.y; // Get y-axis
+      const chartArea = chart.chartArea;
+
+      // Define the color bands
+      const bands = [
+        /*{ color: 'white', from: 0, to: 50 }*/
+        { color: 'blue', from: 50, to: 55 },
+        { color: 'green', from: 55, to: 60 },
+        { color: 'yellow', from: 60, to: 65 },
+        { color: 'orange', from: 65, to: 70 },
+        { color: 'red', from: 70, to: 75 },
+        { color: 'darkred', from: 75, to: 80 },
+        { color: 'white', from: 80, to: 100 }
+      ];
+
+      // Draw each band
+      bands.forEach(band => {
+        const topY = yAxis.getPixelForValue(band.to);
+        const bottomY = yAxis.getPixelForValue(band.from);
+        ctx.fillStyle = band.color;
+        ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bottomY - topY);
+      });
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('dewPointChart').getContext('2d');
+
+    // Get forecast data passed from Flask
+    const forecasts = {{ forecasts | tojson | safe
+  }};
+  const labels = forecasts.map(forecast => forecast.time);
+  const dewPoints = forecasts.map(forecast => forecast.dew_point);
+  const temperatures = forecasts.map(forecast => forecast.temp);
+  const humidities = forecasts.map(forecast => forecast.humidity);
+
+  const myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Dew Point (°F)',
+          data: dewPoints,
+          borderColor: 'rgba(0, 0, 0, 0.7)',
+          pointBackgroundColor: 'black', // Change this to the desired interior color
+          pointBorderColor: 'black', // Ensure border color matches or contrasts
+          fill: false,
+          tension: 0.3,
+          pointRadius: 2,         // Reduce plot point size
+          pointHoverRadius: 4,    // Reduce hover effect size
+          pointBorderWidth: 1,    // Adjust border width for visibility
+          pointHitRadius: 5       // Ensure hover detection still works well
+        }
+        ,
+        {
+          label: 'Temperature (°F)',
+          data: temperatures,
+          borderColor: 'aqua',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 2,         // Reduce plot point size
+          pointHoverRadius: 4,    // Reduce hover effect size
+          pointBorderWidth: 1,    // Adjust border width for visibility
+          pointHitRadius: 5       // Ensure hover detection still works well
+        },
+        {
+          label: 'Relative Humidity (%)',
+          data: humidities,
+          borderColor: 'rgba(30, 144, 255, 1)',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 2,         // Reduce plot point size
+          pointHoverRadius: 4,    // Reduce hover effect size
+          pointBorderWidth: 1,    // Adjust border width for visibility
+          pointHitRadius: 5       // Ensure hover detection still works well
+        }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'time',
+          time: {
+            parser: 'yyyy-MM-dd HH:mm',
+            unit: 'hour',
+            displayFormats: {
+              hour: 'MMM d HH:mm'
+            }
+          },
+          title: {
+            display: true,
+            text: 'Time of Day',
+            font: { size: 20 }
+          }
+        },
+        y: {
+          beginAtZero: false,
+          min: 50,
+          max: 100,
+          ticks: { stepSize: 5 },
+          title: {
+            display: true,
+            text: 'Values',
+            font: { size: 20 }
+          }
+        }
+      },
+      plugins: {
+        legend: { labels: { font: { size: 18 } } },
+        tooltip: {
+          bodyFont: { size: 18 },
+          titleFont: { size: 18 }
+        }
+      }
+    },
+    plugins: [colorBandsPlugin]
+  });
+  });
+</script>
+{% endblock %}

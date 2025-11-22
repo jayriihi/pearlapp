@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Wind session{% endblock %}
+
+{% block content %}
+<style>
+  .page-wrap {
+    max-width: var(--page-max, 1100px);
+    margin: 0 auto;
+    padding: 14px;
+  }
+
+  .card-dark {
+    background: var(--panel, #0f2238);
+    color: var(--panel-text, #e6eef8);
+    border: 1px solid var(--panel-stroke, rgba(255, 255, 255, .14));
+    border-radius: var(--radius, 12px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    padding: 16px;
+  }
+
+  .title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .title h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .meta {
+    opacity: .9;
+    font-size: .9rem;
+  }
+
+  /* — Stats: exactly 4 columns on mobile — */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .stat {
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid var(--panel-stroke, rgba(255, 255, 255, .14));
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: center;
+    line-height: 1.1;
+  }
+
+  .stat .label {
+    font-size: .78rem;
+    opacity: .85;
+    margin-bottom: 2px;
+  }
+
+  .stat .value {
+    font-weight: 800;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .chart-wrap {
+    margin-top: 10px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--panel-stroke, rgba(255, 255, 255, .14));
+    border-radius: 14px;
+    padding: 6px 8px;
+  }
+
+  /* lock the canvas box height so it sits above the fold */
+  .chart-box {
+    height: 210px;
+  }
+
+  .tide-summary {
+    margin-top: 12px;
+    border-top: 1px dashed var(--panel-stroke, rgba(255, 255, 255, .18));
+    padding-top: 10px;
+    font-size: .9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--aqua, #00e1d1);
+    border: 1px solid var(--aqua, #00e1d1);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 700;
+  }
+
+  /* — bump a little on tablets/desktop — */
+  @media (min-width:641px) {
+    .card-dark {
+      padding: clamp(18px, 2vw, 24px);
+    }
+
+    .title h2 {
+      font-size: 22px;
+    }
+
+    .chart-box {
+      height: 260px;
+    }
+  }
+
+  /* Make the canvas fill the fixed-height box */
+.chart-box{ height:210px; }            /* you already have this */
+.chart-box canvas{
+  width:100% !important;
+  height:100% !important;
+  display:block;                       /* avoid inline baseline gaps */
+}
+@media (min-width:641px){
+  .chart-box{ height:260px; }
+}
+
+/* — Softer tide synopsis — */
+.tide-summary{
+  font-size:.88rem;
+  color: rgba(230,238,248,.85);                 /* softer text */
+  border-top: 1px dashed rgba(255,255,255,.12); /* lighter rule */
+  padding-top: 8px;
+}
+.tide-summary strong{
+  font-weight:600;                              /* less than bold-bold */
+  color: rgba(230,238,248,.93);                 /* a hair brighter than body */
+}
+
+/* — Quieter "New session" button — */
+.btn-secondary{
+  text-decoration:none;                         /* remove underline */
+  font-weight:600;                              /* down from 700 */
+  font-size:1.05rem;                            /* slightly smaller */
+  padding:7px 12px;                             /* a touch slimmer */
+  border-width:2px;
+  color: rgba(0,225,209,.90);
+  border-color: rgba(0,225,209,.55);           /* softer outline */
+  background: transparent;
+}
+.btn-secondary:hover,
+.btn-secondary:focus{
+  color: rgba(0,225,209,.98);
+  border-color: rgba(0,225,209,.85);
+  background: rgba(0,225,209,.08);             /* subtle hover fill */
+}
+.btn-secondary:focus-visible{
+  outline: 2px solid rgba(0,225,209,.6);
+  outline-offset: 2px;
+}
+
+
+</style>
+
+
+<div class="page-wrap">
+  <div class="card-dark">
+    <div class="title">
+      <h2>Session on {{ value_date }} at {{ value_time }} for {{ "%d"|format(value_hours) }}hr {{
+        "%d"|format(value_minutes) }}min</h2>
+      <div class="meta">Upwindsports · Crescent data</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Avg</div>
+        <div class="value">{{ value_avg }} kt</div>
+      </div>
+      <div class="stat">
+        <div class="label">Max</div>
+        <div class="value">{{ value_max }} kt</div>
+      </div>
+      <div class="stat">
+        <div class="label">Min</div>
+        <div class="value">{{ value_min }} kt</div>
+      </div>
+      <div class="stat">
+        <div class="label">Dir (avg)</div>
+        <div class="value">{{ value_avg_wind_dir }}°</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-box">
+        <canvas id="windChart"></canvas>
+      </div>
+    </div>
+
+    {# Tide synopsis only #}
+    {% set prev_state = 'High' if prev_peak_state == 'H' else ('Low' if prev_peak_state == 'L' else prev_peak_state) %}
+    {% set next_state = 'High' if next_peak_state == 'H' else ('Low' if next_peak_state == 'L' else next_peak_state) %}
+    <div class="tide-summary">
+      <div><strong>Tide (session window):</strong> {{ flow_state_beg }} → {{ flow_state_end }}</div>
+      <div><strong>Prev:</strong> {{ prev_state }} at {{ prev_peak_time }}</div>
+      <div><strong>Next:</strong> {{ next_state }} at {{ next_peak_time }}</div>
+    </div>
+
+    <div class="actions">
+      <a class="btn-secondary" href="{{ url_for('windput') }}">New session</a>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+  const css   = getComputedStyle(document.documentElement);
+  const accent= (css.getPropertyValue('--aqua') || '#00e1d1').trim();
+  const grid  = (css.getPropertyValue('--grid') || 'rgba(255,255,255,.08)').trim();
+  const text  = (css.getPropertyValue('--panel-text') || '#e6eef8').trim();
+
+  const labels = {{ labels|tojson }};
+  const values = {{ values|tojson }};
+
+  const canvas = document.getElementById('windChart');
+  if (!canvas) return; // safety
+  const ctx = canvas.getContext('2d');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'wind speed',
+        data: values,
+        borderColor: accent,
+        backgroundColor: 'transparent',
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        tension: 0.25,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,  // use .chart-box height
+      layout: { padding: { left: 6, right: 6, top: 6, bottom: 2 } },
+      plugins: {
+        legend: { labels: { color: text, boxWidth: 12, boxHeight: 12, font: { size: 11 } } },
+        tooltip: { mode: 'index', intersect: false, titleFont: { size: 12 }, bodyFont: { size: 11 } }
+      },
+      scales: {
+        x: { ticks: { color: text, maxRotation: 0, minRotation: 0, autoSkip: true, font: { size: 10 } },
+             grid: { color: grid, display: false } },
+        y: { beginAtZero: false, ticks: { color: text, font: { size: 10 } }, grid: { color: grid } }
+      }
+    }
+  });
+})();
+</script>
+
+{% endblock %}

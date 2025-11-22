@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bermuda Tides Chart</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <style>
+        .chartBox {
+            width: 75%;
+            border-radius: 25px;
+            border: solid 3px rgb(12, 6, 193);
+            background: white;
+            margin: 0 auto;
+        }
+    </style>
+
+    <div class="container">
+        <div class="chartBox">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Function to calculate the x-position based on the hour
+        function getCurrentX(hour, chartArea) {
+            const ratio = hour / 24;
+            return chartArea.left + ratio * (chartArea.right - chartArea.left);
+        }
+
+        // Convert time to decimals
+        function timeToDecimal(timeString) {
+            const [time, period] = timeString.split(" ");
+            let [hours, minutes] = time.split(":");
+            hours = parseInt(hours);
+            minutes = parseFloat(minutes) / 60;
+
+            if (period === 'PM' && hours !== 12) {
+                hours += 12;
+            }
+
+            if (period === 'AM' && hours === 12) {
+                hours = 0;
+            }
+
+            return hours + minutes;
+        }
+
+        function drawTimeLinesAndShading(animation, sunriseTime, sunsetTime) {
+            const chart = animation.chart;
+            const ctx = chart.ctx;
+            const chartArea = chart.chartArea;
+
+            const sunriseHour = timeToDecimal(sunriseTime);
+            const sunsetHour = timeToDecimal(sunsetTime);
+
+            const currentTime = new Date();
+            const currentHour = currentTime.getHours() + currentTime.getMinutes() / 60;
+
+            const currentX = getCurrentX(currentHour, chartArea);
+            const sunriseX = getCurrentX(sunriseHour, chartArea);
+            const sunsetX = getCurrentX(sunsetHour, chartArea);
+
+            // Shading
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Light gray shading
+            ctx.fillRect(chartArea.left, chartArea.top, sunriseX - chartArea.left, chartArea.bottom - chartArea.top);
+            ctx.fillRect(sunsetX, chartArea.top, chartArea.right - sunsetX, chartArea.bottom - chartArea.top);
+
+            // Draw lines
+            // Draw lines
+            [currentX, sunriseX, sunsetX].forEach((x) => {
+                ctx.beginPath();
+                ctx.moveTo(x, chartArea.top);
+                ctx.lineTo(x, chartArea.bottom);
+                if (x === currentX) {
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 1)'; // Blue for current time
+                } else {
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Default color for other lines
+                }
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+        function adjustToLocalTime(utcTimeString, isSunset = false) {
+            // Splitting the time into hours, minutes, and seconds
+            const [hourPart, minutePart, secondPart] = utcTimeString.split(':');
+
+            // Convert these to integers
+            let hours = parseInt(hourPart);
+            let minutes = parseInt(minutePart);
+
+            // Considering seconds for a more precise adjustment
+            let seconds = parseInt(secondPart);
+
+            // Add the seconds to minutes to handle rounding off
+            minutes += Math.round(seconds / 60);
+
+            if (minutes >= 60) {
+                hours += 1;
+                minutes -= 60;
+            }
+
+            console.log("Parsed UTC Time - Hours:", hours, "Minutes:", minutes); // Log the parsed values
+
+            // Subtract 4 hours for Bermuda's time zone
+            hours -= 3;
+
+            if (hours < 0) {
+                hours += 24;
+            }
+            // This checks if it's sunset and if the calculated hour is before noon, 
+            // which means it's rolled into the AM and should be on the next day.
+            if (isSunset && hours < 12) {
+                hours += 12; // Adjust to PM
+            } else if (!isSunset && hours > 12) {  // If it's sunrise and somehow went to PM, roll it back
+                hours -= 12;
+            }
+
+            // Convert to AM/PM format
+            let period = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;  // Convert hour '0' to '12'
+            const timeStr = hours + ":" + (minutes < 10 ? "0" + minutes : minutes) + " " + period;
+
+            return timeStr;
+        }
+        // Fetch sunrise and sunset times
+        $.ajax({
+            url: "https://api.sunrise-sunset.org/json?lat=32.2949&lng=-64.7830&date=today",
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                const sunriseTimeUTC = data.results.sunrise;
+                const sunsetTimeUTC = data.results.sunset;
+                console.log("UTC Sunrise:", sunriseTimeUTC, "UTC Sunset:", sunsetTimeUTC);  // This will show the times from the API in the console.
+                const sunriseTime = adjustToLocalTime(sunriseTimeUTC);
+                const sunsetTime = adjustToLocalTime(sunsetTimeUTC, true);
+
+
+
+                console.log("API Sunrise:", data.results.sunrise);
+                console.log("API Sunset:", data.results.sunset);
+                console.log("Adjusted Sunrise:", sunriseTime);
+                console.log("Adjusted Sunset:", sunsetTime);  // Add the "true" flag for sunset
+
+                console.log(data);
+                $(document).ready(function () {
+                    $.getJSON('/data', function (tideData) {
+                        const fullHourLabels = Array.from({ length: 25 }, (_, i) => `${i}:00`);
+                        const desiredLabels = fullHourLabels.map(label => ["6:00", "12:00", "18:00"].includes(label) ? label : "");
+                        var ctx = document.getElementById('myChart').getContext('2d');
+                        var myChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: desiredLabels,
+                                datasets: [{
+                                    label: "Bermuda's tides today",
+                                    data: tideData.values,
+                                    borderColor: 'rgba(255, 0, 0, 1)',
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    tension: 0.4,
+                                    borderWidth: 3
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: { beginAtZero: true },
+                                    x: { ticks: { autoSkip: false, maxRotation: 0 } }
+                                },
+                                animation: {
+                                    onComplete: function (animation) {
+                                        drawTimeLinesAndShading(animation, sunriseTime, sunsetTime);
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Bermuda Tides Today',
+                                        font: {
+                                            size: 10
+                                        },
+                                        padding: {
+                                            top: 10,
+                                            bottom: 10
+                                        }
+                                    },
+                                    legend: {
+                                        display: false
+                                    }
+                                },
+                                elements: { point: { radius: 0 } }
+                            }
+
+                        });
+                    });
+                });
+            },
+            error: function (error) {
+                console.error("Error fetching sunrise and sunset times:", error);
+            }
+        });
+    </script>
+</body>
+
+</html>

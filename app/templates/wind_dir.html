@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Styled Line Chart for Wind Direction</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+    .chartBox {
+            width: 100%; /* Use 100% width to fill the container */
+            max-width: 1000px; /* Set a maximum width */
+            border-radius: 25px;
+            border: solid 3px rgb(12, 6, 193);
+            background: white;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+}
+
+/* Media query for smaller devices */
+@media (max-width: 768px) {
+    .chartBox {
+        width: 90%; /* Adjust width for smaller screens */
+        padding: 15px; /* Reduce padding for small screens */
+    }
+}
+    .chartBox canvas {
+        width: 100%; /* Make canvas width responsive */
+        height: auto; /* Ensure the aspect ratio is maintained */
+}
+
+    .container {
+        width: 100%;
+        max-width: 100%; /* Ensure the container doesn't exceed the screen width */
+        margin: 0 auto;
+}
+
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="chartBox">
+            <canvas id="lineChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('lineChart').getContext('2d');
+      
+        // Data from Flask
+        const dataPoints = {{ wind_dirs | tojson }};
+        const labels     = {{ labels    | tojson }};
+      
+        // ----- helpers -----
+        const mod360 = a => (a % 360 + 360) % 360;
+        const hhmmToMinutes = hhmm => { const [h,m]=hhmm.split(':').map(Number); return h*60+m; };
+      
+        function unwrapAnglesDeg(arr){
+          const out = [arr[0]];
+          for (let i=1;i<arr.length;i++){
+            const prev = out[i-1];
+            const prevMod = mod360(prev);
+            let v = arr[i];
+            let d = v - prevMod;
+            if (d > 180)  d -= 360;
+            if (d < -180) d += 360;
+            out.push(prev + d);
+          }
+          return out;
+        }
+      
+        function linearRegressionXY(xs, ys){
+          const n = xs.length;
+          let sx=0, sy=0, sxy=0, sxx=0;
+          for (let i=0;i<n;i++){ sx+=xs[i]; sy+=ys[i]; sxy+=xs[i]*ys[i]; sxx+=xs[i]*xs[i]; }
+          const slope = (n*sxy - sx*sy) / (n*sxx - sx*sx);   // deg/hr
+          const intercept = (sy - slope*sx) / n;
+          return { slope, intercept };
+        }
+      
+        function niceRange(min, max){
+          const rawMin = Math.floor(min);
+          const rawMax = Math.ceil(max);
+          const nicMin = Math.floor(rawMin / 5) * 5;
+          const nicMax = Math.ceil (rawMax / 5) * 5;
+          const span = nicMax - nicMin;
+          const step = span > 120 ? 30 : span > 60 ? 15 : span > 30 ? 10 : 5;
+          return {min:nicMin, max:nicMax, step};
+        }
+      
+        function compassIfCardinal(deg){
+          const d = mod360(deg);
+          const cards = {0:"N",90:"E",180:"S",270:"W",360:"N"};
+          const hit = [0,90,180,270,360].find(v => Math.abs(d - v) <= 2);
+          return hit !== undefined ? ` (${cards[hit===360?0:hit]})` : "";
+        }
+      
+        // ----- build series -----
+        const norm      = dataPoints.map(mod360);
+        const unwrapped = unwrapAnglesDeg(norm);
+      
+        const m0  = hhmmToMinutes(labels[0]);
+        const xs  = labels.map(hhmmToMinutes).map(m => ((m >= m0 ? m - m0 : m + 1440 - m0) / 60));
+      
+        const { slope, intercept } = linearRegressionXY(xs, unwrapped);
+        const trendUnwrapped       = xs.map(x => intercept + slope*x);
+      
+        const hours       = xs[xs.length-1];
+        const totalChange = unwrapped[unwrapped.length-1] - unwrapped[0];
+        const changeText  = `Trend diff ${hours.toFixed(1)} hrs ${totalChange>=0?'+':''}${totalChange.toFixed(0)}° (${slope.toFixed(2)}°/hr)`;
+      
+        // y-axis range (rounded) that fits both series
+        const pad = 6;
+        const yMinRaw = Math.min(...unwrapped, ...trendUnwrapped) - pad;
+        const yMaxRaw = Math.max(...unwrapped, ...trendUnwrapped) + pad;
+        const {min:yAxisMin, max:yAxisMax, step:yStep} = niceRange(yMinRaw, yMaxRaw);
+      
+        // endpoint labels for trend
+        const startTrendDeg = Math.round(mod360(trendUnwrapped[0]));
+        const endTrendDeg   = Math.round(mod360(trendUnwrapped[trendUnwrapped.length-1]));
+      
+        // plugin: chart header text + endpoint labels
+        const annotatePlugin = {
+          id: 'annotate',
+          afterDatasetsDraw(chart) {
+            const c = chart.ctx, area = chart.chartArea;
+            // header text (not clipped)
+            c.save(); c.font='12px Arial'; c.fillStyle='black'; c.textAlign='right'; c.textBaseline='top';
+            c.fillText(changeText, area.right - 6, area.top + 2);
+            c.restore();
+      
+            // start/end labels on trend dataset (index 1)
+            const meta = chart.getDatasetMeta(1);
+            if (!meta?.data?.length) return;
+            const first = meta.data[0];
+            const last  = meta.data[meta.data.length - 1];
+      
+            c.save();
+            c.font = '11px Arial';
+            c.fillStyle = 'rgba(255,0,0,0.9)';
+            c.textAlign = 'left';
+            c.textBaseline = 'bottom';
+            c.fillText(`Start ${startTrendDeg}°`, first.x + 6, first.y - 6);
+            c.textAlign = 'right';
+            c.fillText(`End ${endTrendDeg}°`,   last.x  - 6, last.y  - 6);
+            c.restore();
+          }
+        };
+      
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Dir',
+                data: unwrapped,
+                borderColor: 'rgba(30, 144, 255, 1)',
+                backgroundColor: 'rgba(0, 99, 132, 0.1)',
+                pointBackgroundColor: 'rgba(0, 99, 132, 0.9)',
+                fill: false,
+                tension: 0.5,
+                borderWidth: 2,
+                pointRadius: 0
+              },
+              {
+                label: 'Trend',
+                data: trendUnwrapped,
+                borderColor: 'rgba(255, 0, 0, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                pointBackgroundColor: 'rgba(255, 99, 132, 0.9)',
+                fill: false,
+                pointRadius: 0,
+                borderWidth: 2,
+                tension: 0
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            layout: { padding: { right: 170, left: 10 } },  // extra room for header text
+            scales: {
+              y: {
+                min: yAxisMin,
+                max: yAxisMax,
+                title: { display: true, text: 'Degrees' },
+                ticks: {
+                  stepSize: yStep,
+                  callback: (v) => `${Math.round(mod360(v))}°${compassIfCardinal(v)}`
+                }
+              },
+              x: {
+                title: { display: true, text: 'Time' },
+                ticks: {
+                  autoSkip: false, maxTicksLimit: 4,
+                  callback: (value, index) => {
+                    const n = labels.length, step = Math.floor(n/3)||1;
+                    if (index===0) return labels[0];
+                    if (index===step) return labels[step];
+                    if (index===2*step) return labels[2*step];
+                    if (index===n-1) return labels[n-1];
+                    return '';
+                  }
+                }
+              }
+            },
+            plugins: {
+              legend: { position: 'top', align: 'start',
+                labels: { boxWidth:10, boxHeight:10, padding:5 } }
+            },
+            animation: false
+          },
+          plugins: [annotatePlugin]
+        });
+      </script>
+      
+
+</body>
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

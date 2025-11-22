@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dew Point 3 day forecast</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <h1>Dew Point Chart</h1>
+    <canvas id="dewPointChart"></canvas>
+    <script>
+        // Chart.js plugin for drawing background color bands
+        const colorBandsPlugin = {
+            id: 'colorBandsPlugin',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                const yAxis = chart.scales.y; // Get y-axis
+                const chartArea = chart.chartArea;
+
+                // Define the color bands
+                const bands = [
+                    { color: 'lightblue', from: 50, to: 55 },
+                    { color: 'green', from: 55, to: 60 },
+                    { color: 'yellow', from: 60, to: 65 },
+                    { color: 'orange', from: 65, to: 70 },
+                    { color: 'red', from: 70, to: 75 },
+                    { color: 'darkred', from: 75, to: 80 }
+                ];
+
+                // Draw each band
+                bands.forEach(band => {
+                    const topY = yAxis.getPixelForValue(band.to);
+                    const bottomY = yAxis.getPixelForValue(band.from);
+                    ctx.fillStyle = band.color;
+                    ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bottomY - topY);
+                });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('dewPointChart').getContext('2d');
+
+            // Get forecast data passed from Flask
+            const forecasts = {{ forecasts | tojson | safe }};
+            const labels = forecasts.map(forecast => forecast.time);
+            const dataPoints = forecasts.map(forecast => forecast.dew_point);
+
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dew Point (°F)',
+                        data: dataPoints,
+                        borderColor: 'rgba(0, 0, 0, 0.7)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                        fill: false,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'yyyy-MM-dd HH:mm',
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            min: 50,
+                            max: 80,
+                            ticks: {
+                                stepSize: 5
+                            },
+                            title: {
+                                display: true,
+                                text: 'Dew Point (°F)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                },
+                plugins: [colorBandsPlugin]
+            });
+        });
+    </script>
+
+</body>
+<h2> How It Feels 50–54	Very comfortable 55–59 Comfortable 60–64 Slightly uncomfortable 65–69 Moderately uncomfortable 70–74 Very uncomfortable 75-80 Extremely uncomfortable
+
+</h2>
+</html>

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}
+Bermuda Dew Point 3-Day Forecast
+{% endblock %}
+
+{% block content %}
+<!-- Main Heading -->
+<h1 class="text-center">Bermuda Dew Point, Temperature, and Humidity 3-Day Forecast</h1>
+
+<!-- Chart Section -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="chart-container" style="position: relative; height: 400px; width: 100%;">
+      <canvas id="dewPointChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Dew Point Explanation Table -->
+<div class="mt-5">
+  <h2>How the dew point feels when exercising outdoors:</h2>
+  <table class="table table-bordered">
+    <thead class="thead-light">
+      <tr>
+        <th>Dew Point Range</th>
+        <th>How It Feels</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>80+</td>
+        <td>Stay indoors with the AC on!!</td>
+      </tr>
+      <tr class="table-danger">
+        <td>75–80</td>
+        <td>Extremely uncomfortable</td>
+      </tr>
+      <tr class="table-warning">
+        <td>70–74</td>
+        <td>Very uncomfortable</td>
+      </tr>
+      <tr class="table-info">
+        <td>65–69</td>
+        <td>Moderately uncomfortable</td>
+      </tr>
+      <tr class="table-success">
+        <td>60–64</td>
+        <td>Slightly uncomfortable</td>
+      </tr>
+      <tr>
+        <td>55–59</td>
+        <td>Comfortable</td>
+      </tr>
+      <tr>
+        <td>50–54</td>
+        <td>Very comfortable</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- External Links Section -->
+<div class="mt-4">
+  <div>
+    <a class="navbar-brand" href="https://crescent.upwindsports.com/" target="_blank">
+      <span>Click to return</span>
+      <img src="/static/logo.jpg" alt="logo" style="margin-right: 10px; height: 50px; border-radius: 50%;">
+    </a>
+  </div>
+  <div>
+    <a class="navbar-brand" href="https://www.alextran.org/dew-point/" target="_blank">
+      <span>Link to an interesting explanation of why dew point</span>
+      <img src="/static/wordpress.png" alt="link" style="margin-right: 10px; height: 50px; border-radius: 50%;">
+    </a>
+  </div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script>
+  // Chart.js plugin for drawing background color bands
+  const colorBandsPlugin = {
+    id: 'colorBandsPlugin',
+    beforeDraw: (chart) => {
+      const ctx = chart.ctx;
+      const yAxis = chart.scales.y; // Get y-axis
+      const chartArea = chart.chartArea;
+
+      // Define the color bands
+      const bands = [
+        { color: 'blue', from: 50, to: 55 },
+        { color: 'green', from: 55, to: 60 },
+        { color: 'yellow', from: 60, to: 65 },
+        { color: 'orange', from: 65, to: 70 },
+        { color: 'red', from: 70, to: 75 },
+        { color: 'darkred', from: 75, to: 80 },
+        { color: 'white', from: 80, to: 100 }
+      ];
+
+      // Draw each band
+      bands.forEach(band => {
+        const topY = yAxis.getPixelForValue(band.to);
+        const bottomY = yAxis.getPixelForValue(band.from);
+        ctx.fillStyle = band.color;
+        ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bottomY - topY);
+      });
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('dewPointChart').getContext('2d');
+
+    // Get forecast data passed from Flask
+    const forecasts = {{ forecasts | tojson | safe }};
+    const labels = forecasts.map(forecast => forecast.time);
+    const dewPoints = forecasts.map(forecast => forecast.dew_point);
+    const temperatures = forecasts.map(forecast => forecast.temp);
+    const humidities = forecasts.map(forecast => forecast.humidity);
+
+    const myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Dew Point (°F)',
+            data: dewPoints,
+            borderColor: 'rgba(0, 0, 0, 0.7)',
+            backgroundColor: 'rgba(255, 255, 255, 1)',
+            fill: false,
+            tension: 0.3
+          },
+          {
+            label: 'Temperature (°F)',
+            data: temperatures,
+            borderColor: 'aqua',
+            fill: false,
+            tension: 0.3
+          },
+          {
+            label: 'Relative Humidity (%)',
+            data: humidities,
+            borderColor: 'rgba(30, 144, 255, 1)',
+            fill: false,
+            tension: 0.3
+          }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              parser: 'yyyy-MM-dd HH:mm',
+              unit: 'hour',
+              displayFormats: {
+                hour: 'MMM d HH:mm'
+              }
+            },
+            title: {
+              display: true,
+              text: 'Time of Day',
+              font: { size: 20 }
+            }
+          },
+          y: {
+            beginAtZero: false,
+            min: 50,
+            max: 100,
+            ticks: { stepSize: 5 },
+            title: {
+              display: true,
+              text: 'Values',
+              font: { size: 20 }
+            }
+          }
+        },
+        plugins: {
+          legend: { labels: { font: { size: 18 } } },
+          tooltip: {
+            bodyFont: { size: 18 },
+            titleFont: { size: 18 }
+          }
+        }
+      },
+      plugins: [colorBandsPlugin]
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<!--Good working model with bans set correctly and sample data-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dew Point Chart with Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <h1>Dew Point Chart</h1>
+    <canvas id="dewPointChart"></canvas>
+    <script>
+        // Chart.js plugin for drawing background color bands
+        const colorBandsPlugin = {
+            id: 'colorBandsPlugin',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                const yAxis = chart.scales.y; // Get y-axis
+                const chartArea = chart.chartArea;
+
+                // Define the color bands
+                const bands = [
+                    { color: 'blue', from: 45, to: 50 },
+                    { color: 'lightblue', from: 50, to: 55 },
+                    { color: 'green', from: 55, to: 60 },
+                    { color: 'yellow', from: 60, to: 65 },
+                    { color: 'orange', from: 65, to: 70 },
+                    { color: 'red', from: 70, to: 75 }
+                ];
+
+                // Draw each band
+                bands.forEach(band => {
+                    const topY = yAxis.getPixelForValue(band.to);
+                    const bottomY = yAxis.getPixelForValue(band.from);
+                    ctx.fillStyle = band.color;
+                    ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bottomY - topY);
+                });
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('dewPointChart').getContext('2d');
+
+            // Sample data and labels
+            const labels = ['2023-10-01T00:00', '2023-10-01T03:00', '2023-10-01T06:00'];
+            const dataPoints = [46, 49, 53];
+
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dew Point (°F)',
+                        data: dataPoints,
+                        borderColor: 'rgba(0, 0, 0, 0.7)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            min: 45,
+                            max: 75,
+                            ticks: {
+                                stepSize: 5
+                            },
+                            title: {
+                                display: true,
+                                text: 'Dew Point (°F)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                },
+                plugins: [colorBandsPlugin]
+            });
+        });
+    </script>
+</body>
+</html>

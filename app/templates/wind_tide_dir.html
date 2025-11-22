@@ -1,0 +1,948 @@
+{% extends "base.html" %}
+{% block content %}
+{% set H = hours|default(1)|int %}
+{% set is_modeled = is_modeled|default(false) %}
+
+
+<style>
+  /* ——— Palette ——— */
+  :root{
+    --bg:#edf2f7;                 /* light page */
+    --text:#25344a;               /* page text */
+    --muted:#5e708a;              /* page secondary */
+    --panel:#0f2238;              /* dark card for charts */
+    --panel-text:#e6eef8;         /* text on dark card */
+    --panel-stroke:rgba(255,255,255,.14);
+    --grid:rgba(255,255,255,.08); /* gridlines on dark card */
+    --aqua:#00e1d1;               /* Bermuda-water accent */
+    --page-max:1100px;
+    --gap:12px;
+    --radius:12px;
+  }
+
+  /* ---- Top cluster refactor (replaces your old h1/periodMenu/btn-group rules) ---- */
+
+/* Heading */
+h1{
+  margin: 2px 0 2px;
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+h1::after{
+  content:"";
+  display:block;
+  width:68px; height:2px;
+  margin:4px auto 0;
+  background: var(--muted); /* #5e708a */
+  opacity:.7; border-radius:999px;
+}
+
+/* “Recent winds at Crescent” line */
+.periodMenu p{
+  margin: 0 0 2px;
+  line-height: 1.12;
+}
+.periodMenu p a[href="/crescent"]{
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+.periodMenu p a[href="/crescent"]:hover{
+  text-decoration: underline;
+}
+
+/* Segmented control */
+.periodMenu .btn-group{ margin: 0 0 4px; }
+
+/* slightly shorter pills */
+.periodMenu .btn{
+  padding: 2px 10px;
+  font-size: .95rem;
+  line-height: 1.12;
+}
+
+/* subtle transitions + clear keyboard focus */
+.periodMenu .btn{
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.periodMenu .btn:focus{
+  outline: 0;
+  box-shadow: 0 0 0 2px rgba(94,112,138,.22) inset, 0 0 0 2px rgba(94,112,138,.18);
+}
+/* hint of depth on active */
+.periodMenu .btn-primary.active{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15);
+}
+
+/* Inactive pills: extra-light */
+.periodMenu .btn-primary{
+  --bs-btn-color: var(--text);
+  --bs-btn-bg: color-mix(in srgb, var(--muted) 8%, white);
+  --bs-btn-border-color: color-mix(in srgb, var(--muted) 28%, white);
+  --bs-btn-hover-bg: color-mix(in srgb, var(--muted) 14%, white);
+  --bs-btn-hover-border-color: color-mix(in srgb, var(--muted) 40%, white);
+
+  /* what Bootstrap uses when a button is .active (pressed/selected) */
+  --bs-btn-active-bg: color-mix(in srgb, var(--muted) 24%, white);
+  --bs-btn-active-border-color: color-mix(in srgb, var(--muted) 50%, white);
+}
+
+/* Selected pill: solid + white text */
+.periodMenu .btn-primary.active,
+.periodMenu .btn-primary[aria-current="page"]{
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--muted);
+  --bs-btn-border-color: var(--muted);
+  --bs-btn-hover-bg: #506076;
+  --bs-btn-hover-border-color: #506076;
+
+  /* CRITICAL for Bootstrap's .active rule */
+  --bs-btn-active-bg: var(--muted);
+  --bs-btn-active-border-color: var(--muted);
+
+  font-weight: 700;
+}
+
+
+/* segment radii */
+.periodMenu .btn-group > .btn{ border-radius: 0; }
+.periodMenu .btn-group > .btn:first-child{ border-radius: 999px 0 0 999px; }
+.periodMenu .btn-group > .btn:last-child{  border-radius: 0 999px 999px 0; }
+
+
+  /* ——— Base + compact spacing ——— */
+  *{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+  body{background:var(--bg)!important;color:var(--text);line-height:1.35}
+  h1{margin:8px 0 2px;font-weight:800;letter-spacing:.02em;font-size:clamp(26px,4vw,44px)}
+  h2,h3{margin:8px 0 4px}
+
+
+  /* Only the 'Crescent' inline link in the header */
+  .periodMenu p a[href="/crescent"]{
+    color:#5e708a !important;
+    font-weight:600;
+    text-decoration:none;
+  }
+  .periodMenu p a[href="/crescent"]:hover{
+    text-decoration:underline;
+  }
+
+  .periodMenu{ margin:2px 0 2px; color:var(--text) }
+  .btn-group{ margin:2px auto 2px}
+    /* Segmented 3-piece pill in the header */
+    .periodMenu .btn-group .btn{ border-radius:0!important; }
+  .periodMenu .btn-group .btn:first-child{
+    border-top-left-radius:999px!important; border-bottom-left-radius:999px!important;
+  }
+  .periodMenu .btn-group .btn:last-child{
+    border-top-right-radius:999px!important; border-bottom-right-radius:999px!important;
+  }
+  /*.periodMenu .btn-group .btn.btn-primary{
+    background-color:#5e708a!important; border-color:#5e708a!important;
+  }
+  .periodMenu .btn-group .btn.btn-primary:hover,
+  .periodMenu .btn-group .btn.btn-primary:focus{
+    background-color:#506076!important; border-color:#506076!important;
+  }*/
+  .windTable table{ margin:0px auto 2px; color:var(--text); border-collapse:separate; border-spacing:0 .15rem }
+  .windTable th{ padding:.25rem .45rem; text-align:center; font-weight:normal; color:var(--muted) }
+  .windTable td{ padding:.3rem .5rem; text-align:center; font-size:clamp(22px,3.3vw,40px); font-weight:700 }
+
+  /* ——— Centered page wrapper + rhythm ——— */
+  .page{ max-width:var(--page-max); margin:0 auto; padding:8px 12px; }
+  .stack{ display:grid; grid-auto-rows:min-content; gap:var(--gap); }
+
+  /* ——— One card style for ALL charts ——— */
+  .chartBox{
+    width:100%;
+    padding:4px 6px;
+    border-radius:var(--radius);
+    overflow:hidden;                  /* clip canvas corners */
+    background:var(--panel);
+    color:var(--panel-text);
+    border:1px solid var(--panel-stroke);
+    height:360px;                    /* 1-hour default */
+  }
+
+  .chartBox.tall{ height:360px; }    /* 3h / 8h */
+
+  .chartBox canvas{
+  display: block;
+  background: transparent;
+  width: 100% !important;
+  height: 100% !important;
+  }
+
+  @media (max-width:640px){
+    .chartBox{ height:220px; }
+    .chartBox.tall{ height: 220px; }
+  }
+    
+  .chartBox canvas{ background:transparent; }
+
+  a{color:var(--aqua);text-decoration:none}
+  a:hover{filter:brightness(1.1)}
+
+  /* lift the cards a touch + unify corners */
+.chartBox{
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  border-radius: 14px;
+}
+
+/* summary row: tidy and responsive */
+.windTable table{
+  margin: 8px auto 2px;
+}
+.windTable thead th{ font-size: clamp(16px,2.3vw,22px); }
+.windTable td{
+  padding:.35rem .6rem;
+  font-size: clamp(20px,3vw,36px);
+}
+
+/* time-range buttons to match theme */
+.btn-group .btn,
+.btn-group .btn.btn-primary{
+  /* was background:#162a45; border:1px solid var(--panel-stroke); color:var(--panel-text) */
+  background: rgba(15,34,56,.08) !important;      /* subtle, light */
+  border: 1px solid rgba(15,34,56,.18) !important;
+  color: var(--text) !important;
+  padding: 5px 10px;                               /* slimmer */
+  border-radius: 10px;
+  box-shadow: none;
+}
+.btn-group .btn:hover{ background: rgba(15,34,56,.12) !important; }
+
+/* active state: gentle aqua emphasis */
+.btn-group .active{
+  background: rgba(0,225,209,.14) !important;
+  border-color: var(--aqua) !important;
+  box-shadow: 0 0 0 2px rgba(0,225,209,.16) inset;
+}
+
+/* page spacing */
+.page{ padding-top: 6px; }
+.stack{ gap: 12px; }
+
+/* ---- PERIOD MENU PILLS (Bootstrap 4 compatible) ---- */
+
+/* shape */
+.periodMenu .btn-group .btn{ 
+  border-radius:0 !important; 
+  padding:3px 10px; 
+  line-height:1.1;
+  box-shadow:none !important;
+}
+.periodMenu .btn-group .btn:first-child{
+  border-top-left-radius:999px !important; 
+  border-bottom-left-radius:999px !important;
+}
+.periodMenu .btn-group .btn:last-child{
+  border-top-right-radius:999px !important; 
+  border-bottom-right-radius:999px !important;
+}
+
+/* INACTIVE (very light) */
+.periodMenu .btn-group .btn.btn-primary{
+  background-color: rgba(94,112,138,0.08) !important;   /* lighter fill */
+  border-color:     rgba(94,112,138,0.28) !important;
+  color: var(--text) !important;
+}
+.periodMenu .btn-group .btn.btn-primary:hover{
+  background-color: rgba(94,112,138,0.14) !important;
+  border-color:     rgba(94,112,138,0.40) !important;
+}
+
+/* ACTIVE (selected) */
+.periodMenu .btn-group .btn.btn-primary.active,
+.periodMenu .btn-group .btn.btn-primary[aria-current="page"]{
+  background-color: #5e708a !important;
+  border-color:     #5e708a !important;
+  color:#fff !important;
+  font-weight:700;
+}
+
+/* targets that specific line under the tide chart */
+.page .text-center p{
+  font-size: clamp(20px, 1.6vw, 18px);
+  font-weight: 700;
+  letter-spacing: .01em;
+  opacity: .95;
+  margin: 4px 0 0;
+}
+
+/* More space *between* the four columns (Avg / Max / Min / Dir) */
+.windTable table{
+  /* border-spacing: H  V */
+  border-spacing: .75rem .04rem;   /* was 0 .04rem */
+}
+
+/* Keep the label↔number gap tight while adding side breathing room */
+.windTable thead th{
+  padding: .12rem .35rem .06rem;   /* top | L/R | bottom (slightly less L/R) */
+}
+.windTable tbody td{
+  padding: .06rem .35rem 0;        /* top | L/R | bottom */
+}
+
+/* Slightly smaller gaps on phones */
+@media (max-width: 640px){
+  .windTable table{ border-spacing: .5rem .03rem; }
+}
+
+/* a bit shorter than the wind card */
+.chartBox.tide{ height:420px; }
+@media (max-width:640px){
+  .chartBox.tide{ height:220px; }
+}
+
+/* --- Dark page + card helpers --- */
+
+.page-wrap{ max-width:var(--page-max,1100px); margin:0 auto; padding:12px; }
+.card-dark{
+  background:var(--panel,#0f2238); color:var(--panel-text,#e6eef8);
+  border:1px solid var(--panel-stroke,rgba(255,255,255,.14));
+  border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,.25);
+  padding:clamp(14px,2.6vw,26px);
+}
+.title{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.title h2{ margin:0; font-size:clamp(18px,2.2vw,26px); }
+.meta{ opacity:.9; font-size:.95rem; display:flex; gap:10px; align-items:center; }
+.badge{ padding:2px 8px; border-radius:999px; font-size:.75rem; border:1px solid var(--aqua); color:var(--aqua); }
+
+/* --- Stat row: 4-up desktop, single-row swipe on mobile --- */
+.stat-grid{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* always 4 across */
+  gap: 10px;                               /* tighter gap */
+  margin-top: 12px;
+}
+
+.stat{
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--panel-stroke, rgba(255,255,255,.14));
+  border-radius: 10px;
+  padding: 8px 10px;                        /* compact padding */
+}
+
+.stat .label{
+  font-size: .72rem;                        /* smaller label */
+  line-height: 1.05;
+  opacity: .85;
+}
+
+.stat .value{
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-size: clamp(0.95rem, 3.0vw, 1.35rem); /* scales down on small screens */
+}
+
+/* Make units smaller so numbers stay readable */
+.stat .value .u{
+  font-weight: 700;
+  opacity: .9;
+  font-size: .82em;                         /* e.g., “kt”, “°” slightly smaller */
+  margin-left: 2px;
+}
+
+/* Slight extra squeeze for small phones */
+@media (max-width: 400px){
+  .stat-grid{ gap: 8px; }
+  .stat{ padding: 7px 8px; border-radius: 9px; }
+  .stat .label{ font-size: .68rem; }
+  .stat .value{ font-size: clamp(0.9rem, 3.2vw, 1.2rem); }
+}
+
+/* Last-resort fallback: horizontal scroll only on very narrow devices */
+@media (max-width: 340px){
+  .stat-grid{
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;                       /* enable swipe only here */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+  .stat{ flex: 0 0 160px; scroll-snap-align: start; }
+  .stat .value{ font-size: 0.98rem; }
+}
+
+
+.chart-wrap{ margin-top:16px; background:rgba(255,255,255,.04);
+             border:1px solid var(--panel-stroke,rgba(255,255,255,.14));
+             border-radius:14px; padding:10px 12px; }
+
+.tide-summary { margin-top:16px; padding-top:12px; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; font-size:.95rem; }
+.tide-summary.dotted { border-top:1px dashed var(--panel-stroke, rgba(255,255,255,.18)); }
+
+/* Page background to match sesh_wind */
+:root { --bg: #edf2f7; }
+body  { background: var(--bg) !important; }
+
+/* One consistent page container */
+.page-wrap{
+  max-width: var(--page-max, 1100px);
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Neutralize Bootstrap .container width inside our page-wrap */
+.page-wrap .container{
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  margin: 0;
+}
+
+/* Trim chart framing to a single thin border */
+.chart-wrap{
+  padding: 0;                     /* no cushion layer */
+  background: transparent;
+  border: none;                   /* remove outer border */
+}
+
+.chartBox{
+  padding: 0;                     /* canvas hugs the box */
+  border: 1px solid rgba(255,255,255,.14);   /* single thin ring */
+  border-radius: 12px;            /* a bit tighter */
+}
+
+.chartBox canvas{
+  border-radius: inherit;         /* match rounded corners */
+}
+
+/* --- final mobile trim (place at end) --- */
+@media (max-width:640px){
+  /* slightly smaller space between the two cards */
+  .stack{ gap: 8px; }                 /* was 12px via :root --gap */
+
+  /* shave chart heights a touch */
+  .chartBox{ height:170px !important; padding: 2px 4px; }
+  .chartBox.tall,
+  .chartBox.tide{ height:160px !important; }   /* tide a hair shorter */
+}
+
+/* Narrow card helper (centered) */
+.page-wrap.narrow { max-width: 560px; margin: 0 auto; }
+@media (max-width: 640px){
+  .page-wrap.narrow { max-width: 100%; }
+}
+
+    /* Vertical wind-dir card title + footer */
+    .chart-title{
+    color: var(--panel-text,#e6eef8);
+    text-align:center;
+    font-weight:700;
+    letter-spacing:.01em;
+    font-size: clamp(18px, 1.9vw, 22px);   /* smaller than before */
+    margin: 2px 0 6px;                     /* tighter spacing */
+  }
+  .chart-footer{
+    color: var(--panel-text,#e6eef8);
+    text-align:center;
+    font-weight:700;
+    letter-spacing:.01em;
+    font-size: clamp(14px, 1.6vw, 18px);   /* “Current dir …°” size */
+    padding: 6px 0 2px;
+    opacity:.95;
+  }
+
+/* --- Wind-dir card (embedded) uses standalone look + tall height --- */
+.page-wrap.wd-card .chart-wrap{
+  padding:10px 12px;
+  background: var(--panel,#0f2238);
+  color: var(--panel-text,#e6eef8);
+  border:1px solid var(--panel-stroke,rgba(255,255,255,.18));
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
+
+.page-wrap.wd-card .chartBox{
+  padding:6px;
+  background: rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  height:72vh;             /* match standalone */
+}
+
+.page-wrap.wd-card .chartBox canvas{ border-radius:inherit; }
+
+/* tighter title/footer (you already added these; keep here for clarity) */
+.page-wrap.wd-card .chart-title{
+  color: var(--panel-text,#e6eef8);
+  text-align:center;
+  font-weight:700;
+  letter-spacing:.01em;
+  font-size: clamp(18px, 1.8vw, 22px);
+  margin: 2px 0 6px;
+}
+.page-wrap.wd-card .chart-footer{
+  color: var(--panel-text,#e6eef8);
+  text-align:center;
+  font-weight:700;
+  letter-spacing:.01em;
+  font-size: clamp(14px, 1.5vw, 18px);
+  padding: 6px 0 2px;
+  opacity:.95;
+}
+
+@media (max-width:640px){
+  .page-wrap.wd-card .chart-wrap{ padding:8px; border-radius:12px; }
+  .page-wrap.wd-card .chartBox{ padding:4px; border-radius:10px; height:68vh; }
+}
+
+
+/* Make the embedded wind-dir card tall on phones */
+@media (max-width:640px){
+  .page-wrap.wd-card .chartBox{
+    /* pick one of these two styles: */
+
+    /* A) viewport-based height (good for the vertical plot) */
+    height: 68dvh !important;   /* iOS/modern */
+    height: 68vh  !important;   /* fallback */
+
+    /* or, B) clamp to keep a sensible min/max: */
+    /* height: clamp(360px, 68dvh, 720px) !important; */
+  }
+}
+
+.chart-inner{
+  padding:6px; 
+  border:none;
+  border-radius:12px;
+  background:none;
+}
+
+</style>
+
+<!-- Header / menu -->
+<div class="page-wrap">
+  <div class="periodMenu">
+    <center>
+      <p>Recent winds at <a href="/crescent">Crescent</a></p>
+      <div class="btn-group">
+        <a class="btn btn-primary {{ 'active' if H==1 else '' }}" href="{{ url_for('winds', hours=1) }}">1 hour</a>
+        <a class="btn btn-primary {{ 'active' if H==3 else '' }}" href="{{ url_for('winds', hours=3) }}">3 hours</a>
+        <a class="btn btn-primary {{ 'active' if H==8 else '' }}" href="{{ url_for('winds', hours=8) }}">8 hours</a>
+      </div>
+    </center>
+  </div>
+</div>
+
+<!-- Summary numbers -->
+<div class="page-wrap">
+  <div class="card-dark">
+    <div class="title">
+      <h2>Past {{ H }}hr{{ 's' if H>1 else '' }}</h2>
+      <div class="meta">
+        <span></span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="label">Avg</div><div class="value">{{ past_hour_avg_wind_spd|round(1) }} kt</div></div>
+      <div class="stat"><div class="label">Max</div><div class="value">{{ past_hour_avg_wind_max|round(1) }} kt</div></div>
+      <div class="stat"><div class="label">Min</div><div class="value">{{ past_hour_avg_wind_min|round(1) }} kt</div></div>
+      <div class="stat"><div class="label">Dir (avg)</div><div class="value">{{ avg_wind_dir }}°</div></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chartBox {{ 'tall' if H >= 3 else '' }}">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Charts -->
+<!-- Libraries -->
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.4.4/d3.min.js"
+  integrity="sha512-hnFpvCiJ8Fr1lYLqcw6wLgFUOEZ89kWCkO+cEekwcWPIPKyknKV1eZmSSG3UxXfsSuf+z/SgmiYB1zFOg3l2UQ=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
+
+
+
+<!-- Shared Chart.js options + wind chart (single block) -->
+
+<script>
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+</script>
+
+<script>
+  // palette
+  const css        = getComputedStyle(document.documentElement);
+  const AQUA       = css.getPropertyValue('--aqua').trim();
+  const GRID       = css.getPropertyValue('--grid').trim();
+  const PANEL_TEXT = css.getPropertyValue('--panel-text').trim();
+
+  // range flags from Jinja
+  const H       = {{ H }};                                   // already set at top
+  const isLong  = {{ (H >= 3) | tojson }};
+  const TENSION = {{ (0.25 if H >= 8 else 0.35) | tojson }};
+
+  // data (use tojson, not |safe)
+  const labels = {{ labels | tojson }};
+  const values = {{ values | tojson }};
+
+  const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    devicePixelRatio: DPR,   
+    plugins: {
+      legend: { display: !isLong, fullSize:false,
+        labels:{ color: PANEL_TEXT, boxWidth:12, boxHeight:12, padding:8 } },
+      tooltip: {
+        backgroundColor: '#0f2238',
+        titleColor: PANEL_TEXT, bodyColor: PANEL_TEXT,
+        borderColor: 'rgba(255,255,255,.15)', borderWidth:1, padding:8
+      }
+      // decimation left off for now to keep things simple
+    },
+    elements: { point: { radius: isLong ? 2 : 3, hoverRadius: isLong ? 3 : 5 } },
+    scales: {
+      x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxTicksLimit: isLong ? 12 : 8 } },
+      y: {
+        grid:{ color: GRID }, ticks:{ color: AQUA, maxTicksLimit: isLong ? 7 : 6 },
+        beginAtZero:true,
+        title:{ display:true, text:'Wind Speed kts', color:PANEL_TEXT }
+      }
+    }
+  };
+
+  const windData = {
+    labels,
+    datasets: [{
+      label: "wind speeds",
+      data: values,
+      borderColor: AQUA,
+      backgroundColor: 'rgba(0,225,209,.15)',
+      pointBackgroundColor: AQUA,
+      borderWidth: 2,
+      tension: TENSION
+    }]
+  };
+
+    new Chart(document.getElementById('myChart'), {
+      type: 'line',
+      data: windData,
+      options: commonOptions
+    });
+
+
+</script>
+
+
+  <!-- Tide chart (uniform look + dark-card shading) -->
+  {% if tide_ok %}
+  <div class="page-wrap">
+    <div class="card-dark">
+      <div class="chart-wrap">
+        <div class="chartBox tide">
+          <canvas id="myChartTide"></canvas>
+        </div>
+      </div>
+  
+      <div class="tide-summary dotted">
+        <div><strong>Prev:</strong> {{ 'High' if prev_peak_state=='H' else ('Low' if prev_peak_state=='L' else prev_peak_state) }} at {{ prev_peak_time }}</div>
+        <div><strong>Tide (now):</strong> {{ flow_state_beg }}</div>        
+        <div><strong>Next:</strong> {{ next_peak_state }} at {{ next_peak_time }}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- —— Wind Direction (vertical, 3h) —— -->
+  <div class="page-wrap narrow wd-card">
+    <div class="card-dark">
+      <div class="chart-title">3hr wind direction history</div>
+      <div class="chart-inner">
+        <div class="chartBox">
+          <canvas id="wd"></canvas>
+        </div>
+      </div>
+      <div class="chart-footer">
+        <span id="lbl-current">Current dir —°</span>
+      </div>
+    </div>
+  </div>
+  
+
+  <script>
+  (function () {
+    const el = document.getElementById('myChartTide');
+    if (!el) return;                         // safety if DOM changes
+    const ctx = el.getContext('2d');
+    const DPR = Math.min(2, window.devicePixelRatio || 1);
+
+    // helpers
+    function getCurrentX(hour, ca){ const r = hour/24; return ca.left + r*(ca.right-ca.left); }
+    function timeToDecimal(timeString){
+      const [time, period] = timeString.split(" ");
+      let [h,m,s] = time.split(":").map(Number); m = m||0; s = s||0;
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      return h + m/60 + s/3600;
+    }
+    function drawTimeLinesAndShading(animation, sunriseTime, sunsetTime) {
+      const chart = animation.chart, ctx = chart.ctx, ca = chart.chartArea;
+      const sunriseHour = timeToDecimal(sunriseTime);
+      const sunsetHour  = timeToDecimal(sunsetTime);
+      const now         = new Date();
+      const currentHour = now.getHours() + now.getMinutes()/60;
+      const currentX = getCurrentX(currentHour,  ca);
+      const sunriseX = getCurrentX(sunriseHour, ca);
+      const sunsetX  = getCurrentX(sunsetHour,  ca);
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(ca.left, ca.top, sunriseX - ca.left, ca.bottom - ca.top);
+      ctx.fillRect(sunsetX,  ca.top, ca.right  - sunsetX, ca.bottom - ca.top);
+      [[currentX, AQUA], [sunriseX, 'rgba(255,255,255,0.5)'], [sunsetX, 'rgba(255,255,255,0.5)']]
+        .forEach(([x, color]) => { ctx.beginPath(); ctx.moveTo(x, ca.top); ctx.lineTo(x, ca.bottom); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke(); });
+      ctx.restore();
+    }
+
+    // sunrise/sunset → tide series → chart
+    jQuery.ajax({
+      url: "https://api.sunrise-sunset.org/json?lat=32.2949&lng=-64.7830&date=today",
+      type: 'GET', dataType: 'json',
+      success: function (data) {
+        function toBDA(utcTime){
+          const tz = 'Atlantic/Bermuda';
+          const d = new Date();
+          const [t, period] = utcTime.split(' ');
+          let [h,m,s] = t.split(':').map(Number);
+          if (period === "PM" && h !== 12) h += 12;
+          if (period === "AM" && h === 12) h = 0;
+          const utcDate = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), h, m, s||0));
+          return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }).format(utcDate);
+        }
+        const sunrise = toBDA(data.results.sunrise);
+        const sunset  = toBDA(data.results.sunset);
+
+        $.getJSON('/data', function (tideData) {
+          const vals   = (tideData.values || []).map(Number);
+          const fullHr = (tideData.times || []).map(t => `${parseInt(t.split(" ")[1].split(":")[0],10)}:00`);
+          const labels = fullHr.map(l => ["6:00","12:00","18:00"].includes(l) ? l : "");
+
+          // scaled y-range
+          const vMin = Math.min(...vals), vMax = Math.max(...vals);
+          const pad  = Math.max((vMax - vMin) * 0.15, 0.2);
+
+          const tideChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: "Bermuda's tides today",
+                data: vals,
+                borderColor: AQUA,
+                backgroundColor: 'rgba(0,225,209,.12)',
+                tension: 0.25,
+                borderWidth: 3,
+                pointRadius: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              devicePixelRatio: DPR,                // crisp
+              scales: {
+                x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxRotation:0 } },
+                y: { beginAtZero:false, min:vMin - pad, max:vMax + pad, grid:{ color: GRID }, ticks:{ color: AQUA } }
+              },
+              plugins: {
+                title: { display:true, text:'Bermuda Tides Today', color:PANEL_TEXT,
+                         font:{ size:14, weight:600, family:'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial' },
+                         padding:{ top:10, bottom:10 } },
+                legend: { display:false }
+              },
+              animation: { onComplete: (a) => drawTimeLinesAndShading(a, sunrise, sunset) },
+              elements: { point: { radius: 0 } }
+            }
+          });
+
+          // make sure it stretches to the final width
+          requestAnimationFrame(() => tideChart.resize());
+        });
+      }
+    });
+  })();
+  </script>
+
+<script>
+  // theme
+  const cssVDV  = getComputedStyle(document.documentElement);
+  const AQUA2   = (cssVDV.getPropertyValue('--aqua')       || '#00e1d1').trim();
+  const GRID2   = (cssVDV.getPropertyValue('--grid')       || 'rgba(255,255,255,.08)').trim();
+  const PANEL2  = (cssVDV.getPropertyValue('--panel-text') || '#e6eef8').trim();
+
+  // NEW: read the vars you passed from the view, with safe defaults
+  const labelsWD = {{ wd_labels | default([]) | tojson }};
+  const dirs360  = {{ wd_dirs   | default([]) | tojson }};
+
+  // parse times from labels
+  function parseWhen(t){
+    if (typeof t === 'number') return new Date(t);
+    const s = String(t);
+    let d = new Date(s); if (!isNaN(d)) return d;
+    d = new Date((s.includes('T') ? s : s.replace(' ', 'T')) + (/[Z+\-]/.test(s) ? '' : 'Z'));
+    return isNaN(d) ? null : d;
+  }
+
+  const pairs = labelsWD.map((t,i)=>({ t:parseWhen(t), d:Number(dirs360[i]) }))
+                      .filter(p=>p.t && Number.isFinite(p.d))
+                      .sort((a,b)=>a.t-b.t);
+
+  if (!pairs.length) {
+    console.warn('wind_dir_vert: no data');
+  } else {
+    const times = pairs.map(p=>p.t);
+    const dirs  = pairs.map(p=>p.d);
+    
+
+    // --- update footer with latest value ---
+    const footerEl = document.getElementById('lbl-current');
+    if (footerEl && dirs.length) {
+      const latest = ((dirs.at(-1) % 360) + 360) % 360;  // normalize 0–360
+      footerEl.textContent = `Current dir ${Math.round(latest)}°`;
+    }
+
+    // circular mean and deltas (-180..+180)
+    const toRad = d => d*Math.PI/180, toDeg = r => r*180/Math.PI;
+    const S = dirs.reduce((a,d)=>a+Math.sin(toRad(d)),0);
+    const C = dirs.reduce((a,d)=>a+Math.cos(toRad(d)),0);
+    const meanDeg = toDeg(Math.atan2(S,C));
+    const mean360 = ((meanDeg % 360) + 360) % 360;
+    const delta = d => ((d - meanDeg + 540) % 360) - 180;
+    const deltas = dirs.map(delta);
+
+    // y-axis = time (last 3h snapped to 15-min)
+    const tms = times.map(t=>t.getTime());
+    const yMaxRaw = new Date(Math.max(...tms));
+    const QUARTER = 15 * 60 * 1000;
+    const yMaxSnap = new Date(Math.ceil(yMaxRaw.getTime()/QUARTER)*QUARTER);
+    const yMinSnap = new Date(yMaxSnap.getTime() - 3*60*60*1000);
+    const FIVE_MIN = 5 * 60 * 1000;
+    const yMinVis  = new Date(yMinSnap.getTime() - FIVE_MIN); // small top headroom
+
+
+    // x span based on spread
+    const PAD=5, maxAbs = deltas.length ? Math.max(...deltas.map(Math.abs)) : 50;
+    const span = Math.max(100, Math.min(360, 2*maxAbs + 2*PAD));
+    const xMin = -span/2, xMax = span/2;
+
+    const points = times.map((t,i)=>({ x:deltas[i], y:t }));
+    if (yMaxSnap > times.at(-1)) points.push({ x:deltas.at(-1), y:yMaxSnap });
+
+    // reference line at x=0 labelled with mean
+    const refLine = { /* ...unchanged... */ };
+
+    const el = document.getElementById('wd');
+    const existing = Chart.getChart(el); if (existing) existing.destroy();
+
+    new Chart(el, {
+  type: 'line',
+  data: {
+    datasets: [{
+      data: points,                      // ✅ actual data points
+      tension: 0.25,
+      spanGaps: true,
+      borderWidth: 2,
+      pointRadius: 0,
+      borderColor: AQUA2,
+      backgroundColor: 'rgba(0,225,209,.14)'
+    }]
+  },
+  options: {
+    maintainAspectRatio: false,
+    animation: false,
+    normalized: true,
+    layout: { padding: { top: 10, bottom: 4 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const deg = Math.round(((deltas[ctx.dataIndex] + mean360 + 360) % 360));
+            return ` ${deg}°`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        title: {
+          display: true,
+          text: `Δ° from mean (${Math.round(mean360)}°)`,
+          color: PANEL2
+        },
+        min: xMin,
+        max: xMax,
+        grid: { color: GRID2 },
+        ticks: { color: AQUA2 }
+      },
+      y: {
+        type: 'time',
+        reverse: true,
+        offset: true,
+        min: yMinVis,
+        max: yMaxSnap,
+        time: {
+          unit: 'minute',
+          stepSize: 5,
+          round: 'minute',
+          displayFormats: { minute: 'HH:mm' },
+          tooltipFormat: 'HH:mm'
+        },
+        grid: {
+          color: (ctx) =>
+            (+ctx.tick.value % (15 * 60 * 1000) === 0 ? 'rgba(255,255,255,.16)' : GRID2)
+        },
+        ticks: {
+          color: AQUA2,
+          autoSkip: false,
+          padding: 6,
+          callback: (v) => {
+            if (+v === +yMaxSnap) return 'now';
+            const mins = Math.round((yMaxSnap - v) / 60000);
+            if (mins % 15 !== 0) return '';
+            if (mins % 60 === 0) return `-${mins / 60}h`;
+            if (mins < 60) return `-${mins}`;
+            const h = Math.floor(mins / 60), m = mins % 60;
+            return `-${h}:${String(m).padStart(2, '0')}`;
+          },
+          afterBuildTicks: () => {
+            const out = [], FIVE = 5 * 60 * 1000;
+            for (let t = yMaxSnap.getTime(); t >= yMinSnap.getTime(); t -= FIVE) {
+              out.push({ value: t });
+            }
+            return out;
+          }
+        }
+      }
+    }
+  },
+  plugins: [refLine]
+});
+
+
+  }
+</script>
+
+
+<!-- Bootstrap JS (optional; your base.html may already include these) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+  integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+  integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+{% endblock %}

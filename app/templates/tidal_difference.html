@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tidal Difference in Bermuda</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Ensure the annotation plugin script is included before your chart setup script -->
+  <script src="https://unpkg.com/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+  <canvas id="tidalChart" width="800" height="400"></canvas>
+  <script>
+    const flowData = JSON.parse('{{ flow_data_json | safe }}');
+    const highLowTimes = JSON.parse('{{ hilo_data_json | safe }}');
+    
+    const ctx = document.getElementById('tidalChart').getContext('2d');
+    const tidalFlowChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: flowData.map(data => data.time),
+            datasets: [{
+                label: 'Tidal Flow (Height Change per Interval)',
+                data: flowData.map(data => data.difference),
+                backgroundColor: 'rgba(54, 162, 235, 1)',
+                borderColor: 'rgba(54, 162, 192, 192)',
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        tooltipFormat: 'yyyy-MM-dd HH:mm',
+                        unit: 'hour'
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                annotation: {
+                    annotations: highLowTimes.map((time, index) => ({
+                        type: 'line',
+                        mode: 'vertical',
+                        xMin: time.time, // Adjusted for Chart.js v3
+                        xMax: time.time, // Ensures the line is vertical
+                        borderColor: 'rgb(' + (index % 2 === 0 ? '255, 99, 132' : '75, 192, 192') + ')',
+                        borderWidth: 2,
+                        label: {
+                            enabled: true,
+                            content: (index % 2 === 0 ? 'High Tide' : 'Low Tide')
+                        }
+                    }))
+                }
+            },
+        }
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    body {
+      background-color: rgb(23, 255, 255)!important;
+    }
+
+    .title {
+        padding-top: 5%;
+    }
+
+    img {
+            float: left; /* Float the image to the left */
+            margin: 10px;
+            margin-top: 0px;
+             /* Add some margin to create space between the image and text */
+    }
+
+    .text {
+            font-size: medium;
+            text-align: justify;
+            padding: 3%;
+    }
+
+    </style>
+
+    <div class = "title" >
+        <div class = "container">
+            <center><h1>This is Crescent Station</h1></center>
+        </div>
+    </div>
+
+    <body>
+    <div class = "image" >
+        <div class = "container">
+            <img src="/static/crescent.jpeg" width="" height="240" >
+        </div>
+    </div>
+
+    <div class = "text" >
+        <div class = "container">
+        <p>
+            An autonomous weather station and AIS beacon, managed by Bermuda Maritime Operations Center, Department of Marine and Ports Services. It is securely affixed to a channel marker on the North Channel, approximately 4 miles North of Dockyard. This location marks a critical point where the channel approach follows a graceful "crescent" shaped bend, leading into a chute in the reef, measuring just about 200 meters wide.
+        </p>
+        <p>
+            Imagine piloting a cruise ship, 330 meters long and 47 meters wide, with an exposed windage area of approximately 25,000 square meters. At this precise bend, knowing the current wind conditions becomes indispensable!
+        </p>
+        <p>
+            As wind enthusiasts, we greatly value the availability of the only unobstructed wind reading at surface level. This invaluable tool provides real-time insights into the current wind conditions and its recent trends. Keeping us informed about what the wind is currently doing empowers us to make well-informed decisions and indulge in our passion for wind-related activities.   
+        </p>
+
+        </div>
+    </div>
+
+
+
+
+    </body>
+{% endblock %}

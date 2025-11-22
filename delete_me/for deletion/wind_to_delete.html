@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+<html>
+
+
+
+<h1>{% block content %}
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+    }
+
+    .chartMenu {
+      width: auto;
+      height: 45px;
+      text-align: center;
+      padding-top: 4px;
+      background: #0c20d3;
+      color: rgb(23, 255, 255);
+      font-size: 35px;
+    }
+
+    .chartMenu ul :hover {
+      list-style-type: none;
+      margin: 0;
+      padding: 10px;
+      color: aliceblue;
+    }
+
+    .chartMenu ul {
+      color: rgb(23, 255, 255);
+
+    }
+
+    .chartMenu a {
+      color: rgb(23, 255, 255);
+
+    }
+
+    .chartMenu li {
+      display: inline;
+      padding: 20px;
+      color: rgb(23, 255, 255);
+
+
+    }
+
+
+    .chartMenu table {
+      margin-left: auto;
+      margin-right: auto;
+      margin-top: 60px;
+      width: 50pc;
+      padding: 20px;
+    }
+
+    .chartMenu thead {
+      font-size: 25px;
+      color: #0c20d3;
+      padding: 10px;
+    }
+
+    .chartMenu tbody {
+      font-size: 25px;
+      color: #0c20d3;
+    }
+
+
+
+    .chartCard {
+      width: 100vw;
+      height: calc(80pc - 40px);
+      background: rgb(23, 255, 255);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chartBox {
+      width: 900px;
+      padding: 5pc;
+      border-radius: 25px;
+      border: solid 3px rgb(12, 6, 193);
+      background: white;
+      margin-right: 2pc;
+      margin-bottom: 20pc;
+    }
+
+     .tide {
+      color: #0c20d3;
+      text-align: center;
+    }
+
+  </style>
+  </head>
+
+  <body>
+    <div class="chartMenu">
+      <p>Session on {{value_date}} at {{value_time}} for {{value_hours}}hr {{value_minutes}}min</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Avg wind spd</th>
+            <th>Max wind spd</th>
+            <th>Min wind spd</th>
+            <th>Avg wind dir</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td>{{value_avg}}</td>
+            <td>{{value_max}}</td>
+            <td>{{value_min}}</td>
+            <td>{{value_avg_n_wind_dir}}</td>
+          </tr>
+        </tbody>
+
+
+      </table>
+
+    </div>
+    <div class="chartCard">
+      <div class="chartBox">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.4.4/d3.min.js"
+      integrity="sha512-hnFpvCiJ8Fr1lYLqcw6wLgFUOEZ89kWCkO+cEekwcWPIPKyknKV1eZmSSG3UxXfsSuf+z/SgmiYB1zFOg3l2UQ=="
+      crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
+    <script>
+
+      // setup
+      const data = {
+        /// code to take labels and values from flask app
+        labels: {{ labels | safe }},
+      datasets: [
+        {
+          label: "wind speeds",
+          data: {{ values | safe }},
+
+
+        backgroundColor: [
+          'rgba(255, 26, 104, 1)',
+        ],
+
+        borderColor: [
+          'rgba(255, 0, 0, 1)',
+        ],
+
+        borderWidth: 2,
+        lineTension: 0.5,
+        trendlineLinear: {
+          style: "rgba(0,0,255, .6)",
+          lineStyle: "dotted|solid",
+          width: 2.5,
+          projection: false
+        },
+          }]
+        };
+
+      // config
+      const config = {
+        type: 'line',
+        data,
+        options: {
+
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Wind Speed in Knots'
+
+              }
+            }
+          }
+        }
+      };
+
+      // render init block
+      const myChart = new Chart(
+        document.getElementById('myChart'),
+        config
+      );
+    </script>
+
+<div class="tide">
+  <p>
+   <h2>
+     <u>Tide details for session -</u><br>
+     Beginning flow state was - {{value_flow_state_beg}}<br>
+     Ending flow state was - {{value_flow_state_end}}<br>
+     Previous tide peak was {{value_prev_peak_state['Tide']}} at {{value_prev_peak_time.strftime('%H:%M')}}<br>
+     Next tide peak is {{value_next_peak_state['Tide']}} at {{value_next_peak_time.strftime('%H:%M')}}
+   </h2>
+   </p>
+ </div>
+
+
+
+  </body>{% endblock %}
+</h1>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+  integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+  integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+  integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+
+</body>
+
+</html>

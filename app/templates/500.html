@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}  Internal server error  {% endblock %}
+{% block content %}
+<style>
+
+    .body{
+        padding 20px;
+    }
+
+</style>
+<h2>Whoops something went wrong</h2>
+<br>
+<body><h2>The most common reason for landing on this page is missing the input format for duration:<br><br>
+        Enter&nbsp  number of hours &nbsp:&nbsp  number of minutes --- 1:45<br><br>
+        Note that you must enter a number for hours and minutes even if it's 0<br><br>
+        Example -&nbsp  0:45 = 45 mins &nbspor&nbsp  1:0 = 1 hour</h2></body><br>
+
+        <p><h3>Click below to return to the session input</h3></p>
+        <center><a  class="nav-link" href="/windput"><h1>Session</h1></a></center>
+{% endblock %}

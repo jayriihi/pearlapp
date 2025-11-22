@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tidal Difference in Bermuda</title>
+  <!-- Include Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <canvas id="tidalChart" width="800" height="400"></canvas>
+
+  <script>
+    // Parse the JSON data passed from Flask
+    const tidalData = JSON.parse('{{ tidal_json | safe }}');
+
+    // Extracting labels and data from tidalData
+    const labels = tidalData.map(data => new Date(data.Date).toLocaleString());
+    const tidalHeightData = tidalData.map(data => parseFloat(data.Tidal_Height));
+
+    // Calculate tidal differences
+    const tidalDifferenceData = tidalHeightData.map((height, index) => {
+      if (index === 0) return 0; // No difference for the first data point
+      return height - tidalHeightData[index - 1];
+    });
+
+    // Create the tidal chart
+    const ctx = document.getElementById('tidalChart').getContext('2d');
+    const tidalChart = new Chart(ctx, {
+      type: 'line', // Assuming a line chart is appropriate for tidal height data
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Tidal Height',
+          data: tidalHeightData,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)', // Blue color with transparency
+          borderColor: 'rgba(54, 162, 235, 1)', // Solid blue border
+          borderWidth: 1
+        }, {
+          label: 'Tidal Difference',
+          data: tidalDifferenceData,
+          backgroundColor: 'rgba(255, 99, 132, 0.7)', // Pink color with transparency
+          borderColor: 'rgba(255, 99, 132, 1)', // Solid pink border
+          borderWidth: 1
+        }]
+      },
+      options: {
+        scales: {
+          yAxes: [{
+            scaleLabel: {
+              display: true,
+              labelString: 'Tidal Height (meters)' // Updated y-axis label
+            },
+            ticks: {
+              beginAtZero: true,
+              // Adjust the min and max values to magnify the y-axis
+              min: Math.min(...tidalHeightData) - 1, // Decrease this value to magnify
+              max: Math.max(...tidalHeightData) + 1  // Increase this value to magnify
+            }
+          }],
+          xAxes: [{
+            scaleLabel: {
+              display: true,
+              labelString: 'Date/Time' // Updated x-axis label
+            }
+          }]
+        },
+        title: {
+          display: true,
+          text: 'Tidal Height and Difference in Bermuda' // Updated title
+        }
+      }
+    });
+  </script>
+</body>
+</html>

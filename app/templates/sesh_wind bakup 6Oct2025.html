@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+<html>
+
+
+
+<h1>{% block content %}
+  <style>
+    
+    body {
+    background-color: rgb(23, 255, 255)!important;
+  }
+
+    * {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+    }
+
+    .notice {
+      margin-top: 20px;
+      padding: 10px;
+      font-size: 14px;
+      background-color: #ffecb5;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      color: #856404;
+    }
+
+    .chartMenu {
+      width: auto;
+      height: auto;
+      display: flex;
+      flex-wrap: wrap;
+      text-align: center;
+      margin-top: auto;
+      margin-bottom: auto;
+      padding-top: 8px;
+      background: #0c20d3;
+      color: rgb(23, 255, 255);
+    }
+
+    .windTable table{
+    margin-top: .9pc;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: Arial, Helvetica, sans-serif;
+    
+    color:  #0c20d3
+  }
+
+
+  .windTable th{
+    padding: .75pc;
+    text-align: center;
+    font-weight: normal;
+  }
+
+  .windTable td{
+    text-align: center;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+  }
+
+  .chartCard {
+    width: auto;
+    margin: 25px;
+        /*width: 100vw;
+        height: calc(80pc - 40px);*/
+    background: rgb(23, 255, 255);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chartBox {
+    border-radius: 25px;
+    border: solid 3px rgb(12, 6, 193);
+    background: white;
+  }
+
+  .tide {
+    color: #0c20d3;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: normal;
+    font-size: small;
+    margin-top: 2pc;
+    }
+
+
+  </style>
+  </head>
+
+  <body>
+      <div class="container">
+        <!-- Display a warning if Crescent data is unavailable -->
+        {% if is_crescent_down %}
+          <div class="notice text-center">
+                Crescent data was not available for the selected period. Displaying fallback or incomplete data.
+            </div>
+        {% endif %}
+    
+        <!-- Session information 
+        <h1>Session on {{ session_date }} at {{ session_time }} for {{ session_duration }}</h1>
+        <p>Avg: {{ avg_wind_spd }} | Max: {{ wind_max }} | Min: {{ wind_min }} | Dir: {{ avg_wind_dir }}</p>-->
+    
+        <!-- Graph -->
+        <canvas id="windGraph"></canvas>
+    </div>
+
+    <div class="chartMenu">
+      <div class="container-fluid">
+        <p>Session on {{value_date}} at {{value_time}} for {{value_hours}}hr {{value_minutes}}min</p>
+      </div>
+    </div>    
+        
+        <div class="windTable">
+          <div class="container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Avg</th>
+                  <th>Max</th>
+                  <th>Min</th>
+                  <th>Dir</th>
+                </tr>
+              </thead>
+    
+              <tbody>
+                <tr>
+                  <td>{{value_avg}}</td>
+                  <td>{{value_max}}</td>
+                  <td>{{value_min}}</td>
+                  <td>{{value_avg_wind_dir}}</td>
+                </tr>
+              </tbody>
+            </table>
+          
+        </div>
+      </div><br>
+    
+    <div class="container">
+        <!--<center><div class="chartCard"></center>-->
+          <div class="chartBox">
+              <canvas id="myChart"></canvas>             
+          
+    </div>
+    
+
+    
+  
+  
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.4.4/d3.min.js"
+      integrity="sha512-hnFpvCiJ8Fr1lYLqcw6wLgFUOEZ89kWCkO+cEekwcWPIPKyknKV1eZmSSG3UxXfsSuf+z/SgmiYB1zFOg3l2UQ=="
+      crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
+    <script>
+  
+      // setup 
+      const data = {
+        /// code to take labels and values from flask app
+        labels: {{ labels | safe }},
+      datasets: [
+        {
+          label: "wind speeds",
+          data: {{ values | safe }},
+  
+  
+        backgroundColor: [
+          'rgba(255, 26, 104, 1)',
+        ],
+  
+        borderColor: [
+          'rgba(255, 0, 0, 1)',
+        ],
+  
+        borderWidth: 2,
+        lineTension: 0.5,
+  
+        trendlineLinear: {
+          style: "rgba(0,0,255,.6)",
+          lineStyle: "dotted|solid",
+          width: 2.5,
+          projection: false
+        },            
+          }]
+        };
+  
+      // config 
+      const config = {
+        type: 'line',
+        data,
+        options: {
+  
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Wind Speed in Knots'
+  
+              }
+            }
+          }
+        }
+      };
+  
+      // render init block
+      const myChart = new Chart(
+        document.getElementById('myChart'),
+        config
+      );
+    </script>
+
+<div class="tide">
+  <div class="container">
+  <p>
+     <u>Tide details for session -</u><br>
+     Beginning flow state was - {{flow_state_beg}}<br>
+     Ending flow state was - {{flow_state_end}}<br>
+     Previous tide peak was {{prev_peak_state['Tide']}} at {{prev_peak_time.strftime('%H:%M')}}<br>
+     Next tide peak is {{next_peak_state['Tide']}} at {{next_peak_time.strftime('%H:%M')}}
+   </p>
+ </div>
+</div>
+
+
+
+
+  </body>{% endblock %}
+</h1>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+  integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+  integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+  integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+
+</body>
+
+</html>

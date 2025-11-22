@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tidal Difference Visualization</title>
+    <!-- Include Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Include date-fns adapter for Chart.js to handle dates properly -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+
+<h2>Tidal Heights in Bermuda</h2>
+
+<!-- Canvas element where the Chart.js chart will be rendered -->
+<canvas id="tidalChart" width="800" height="400"></canvas>
+
+<script>
+  // Correctly parsing the JSON data passed from Flask into the JavaScript variable
+  const flowData = JSON.parse('{{ flow_intervals_data_json | safe }}');
+
+
+  // adding console log to check dates going in to create labels
+  console.log("Intermediate times data:", flowData.map(data => data.time));
+  // Since dates are already ISO strings, you don't need to convert them to Date objects and back to ISO strings.
+const labels = flowData.map(data => data.time);
+
+const flowValues = flowData.map(data => data.difference);
+
+const ctx = document.getElementById('tidalChart').getContext('2d');
+const tidalFlowChart = new Chart(ctx, {
+    type: 'bar', // A bar chart is suitable for visualizing the change in each interval
+    data: {
+        labels: labels, // Use the ISO string dates directly as labels
+        datasets: [{
+            label: 'Tidal Flow (Height Change per Interval)',
+            data: flowValues,
+            backgroundColor: 'rgba(54, 162, 235, 1)', // Blue color for bars
+            borderColor: 'rgba(54, 162, 235, 1)', // Blue border color
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                type: 'time',
+                time: {
+                    tooltipFormat: 'yyyy-MM-dd HH:mm',
+                    unit: 'hour'
+                },
+                title: {
+                    display: true,
+                    text: 'Interval Start Time'
+                }
+            },
+            y: {
+                beginAtZero: true, // Start the y-axis at 0
+                title: {
+                    display: true,
+                    text: 'Height Change (meters)'
+                }
+            }
+        },
+        plugins: {
+            title: {
+                display: true,
+                text: 'Tidal Flow Intervals in Bermuda'
+            },
+            legend: {
+                display: false // Set to true if you want to display the legend
+            }
+        }
+    }
+});
+
+</script>
+
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

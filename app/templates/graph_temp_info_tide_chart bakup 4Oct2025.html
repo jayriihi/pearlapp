@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  body {
+    background-color: rgb(23, 255, 255) !important;
+  }
+
+
+
+  .periodMenu {
+    padding-top: .6pc;
+    color: #0c20d3;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: normal;
+  }
+
+  .windTable table {
+    margin-top: .9pc;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: Arial, Helvetica, sans-serif;
+
+    color: #0c20d3
+  }
+
+
+  .windTable th {
+    padding: .75pc;
+    text-align: center;
+    font-weight: normal;
+  }
+
+  .windTable td {
+    padding: 0.75rem .85rem;
+    /* Add padding for table cells */
+    text-align: center;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+  }
+
+  .chartCard {
+    width: auto;
+    margin: 25px;
+    /*width: 100vw;
+      height: calc(80pc - 40px);*/
+    background: rgb(23, 255, 255);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chartBox {
+    /*width: auto;
+      padding: 5pc;
+      display: flex;*/
+    border-radius: 25px;
+    border: solid 3px rgb(12, 6, 193);
+    background: white;
+    /*margin-right: 2pc;
+      margin-bottom: 20pc;
+      justify-content: center;*/
+
+  }
+
+  .tide {
+    color: #0c20d3;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: normal;
+    font-size: medium;
+    margin-top: 2pc;
+  }
+
+  .info {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: #f1f1f1;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 12px;
+    line-height: 20px;
+    margin-left: 5px;
+    vertical-align: text-top;
+    font-weight: bold;
+  }
+
+  .container.text-center.mt-4 p {
+
+    color: #0c20d3;
+  }
+</style>
+
+
+<div class="periodMenu">
+  <div class="container">
+    <center>
+
+      <p> Recent winds at <a href="/crescent">Crescent<span class="info">i</span></a></p>
+
+
+      <div class="btn-group">
+        <a href="#" class="btn btn-primary active" aria-current="page">1 hour</a>
+        <a href="graph_3hr" class="btn btn-primary">3 hours</a>
+        <a href="graph_8hr" class="btn btn-primary">8 hours</a>
+      </div>
+    </center>
+  </div>
+</div>
+
+
+
+<div class="windTable">
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>Avg</th>
+          <th>Max</th>
+          <th>Min</th>
+          <th>Dir</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td>{{ past_hour_avg_wind_spd|round(1) }}</td>
+          <td>{{ past_hour_avg_wind_max|round(1) }}</td>
+          <td>{{ past_hour_avg_wind_min|round(1) }}</td>
+          <td>{{ avg_wind_dir }}</td>
+        </tr>
+      </tbody>
+
+
+
+    </table>
+  </div>
+</div>
+
+</div><br>
+
+
+
+
+<div class="container">
+  <!--<center><div class="chartCard"></center>-->
+  <div class="chartBox">
+    <canvas id="myChart"></canvas>
+  </div>
+</div>
+</div>
+
+
+
+<!-- Include jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.4.4/d3.min.js"
+  integrity="sha512-hnFpvCiJ8Fr1lYLqcw6wLgFUOEZ89kWCkO+cEekwcWPIPKyknKV1eZmSSG3UxXfsSuf+z/SgmiYB1zFOg3l2UQ=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
+
+
+<script>
+
+  // setup 
+  const data = {
+    /// code to take labels and values from flask app
+    labels: {{ labels | safe }},
+  datasets: [
+    {
+      label: "wind speeds",
+      data: {{ values | safe }},
+
+
+    backgroundColor: [
+      'rgba(255, 26, 104, 1)',
+    ],
+
+    borderColor: [
+      'rgba(255, 0, 0, 1)',
+    ],
+
+    borderWidth: 2,
+    lineTension: 0.5,
+
+    trendlineLinear: {
+      lineColor: 'rgba(255, 0, 0, 1)',
+      lineStyle: "dotted|solid",
+      width: 2.5,
+      projection: false
+    },            
+        }]
+      };
+
+  // config 
+  const config = {
+    type: 'line',
+    data,
+    options: {
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Wind Speed Knts'
+
+          }
+        }
+      }
+    }
+  };
+
+  // render init block
+  const myChart = new Chart(
+    document.getElementById('myChart'),
+    config
+  );
+</script>
+
+
+<!-- now the tide chart code -->
+{% if tide_ok %}
+
+  <style>
+    .chartBox {
+      width: 75%;
+      border-radius: 25px;
+      border: solid 3px rgb(12, 6, 193);
+      background: white;
+      margin: auto;
+      margin-bottom: 35px;
+    }
+  </style>
+
+  <div class="container">
+    <div class="chartBox">
+      <canvas id="myChartTide"></canvas>
+    </div>
+  </div>
+
+  <div class="container text-center mt-4">
+    <p>Next tide is {{ next_peak_state }} at {{ next_peak_time }}</p>
+  </div>
+
+  <script>
+    /* your existing tide JS exactly as-is (sunrise/sunset + /data + Chart.js) */
+  </script>
+
+{% else %}
+
+  <div class="container text-center mt-4">
+    <div class="alert alert-warning">⚠️ {{ tide_error_msg or "Tide data temporarily unavailable." }}</div>
+  </div>
+
+{% endif %}
+
+<script>
+  // Function to calculate the x-position based on the hour
+  function getCurrentX(hour, chartArea) {
+    const ratio = hour / 24;
+    return chartArea.left + ratio * (chartArea.right - chartArea.left);
+  }
+
+  // Convert time to decimals
+  function timeToDecimal(timeString) {
+    const [time, period] = timeString.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    minutes = minutes / 60;
+
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    }
+    if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return hours + minutes;
+  }
+
+  function drawTimeLinesAndShading(animation, sunriseTime, sunsetTime) {
+    const chart = animation.chart;
+    const ctx = chart.ctx;
+    const chartArea = chart.chartArea;
+
+    const sunriseHour = timeToDecimal(sunriseTime);
+    const sunsetHour = timeToDecimal(sunsetTime);
+    const currentTime = new Date();
+    const currentHour = currentTime.getHours() + currentTime.getMinutes() / 60;
+
+    const currentX = getCurrentX(currentHour, chartArea);
+    const sunriseX = getCurrentX(sunriseHour, chartArea);
+    const sunsetX = getCurrentX(sunsetHour, chartArea);
+
+    // Shading for night hours
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(chartArea.left, chartArea.top, sunriseX - chartArea.left, chartArea.bottom - chartArea.top);
+    ctx.fillRect(sunsetX, chartArea.top, chartArea.right - sunsetX, chartArea.bottom - chartArea.top);
+
+    // Draw lines for sunrise, sunset, and current time
+    [currentX, sunriseX, sunsetX].forEach((x, index) => {
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.strokeStyle = index === 0 ? 'rgba(255, 0, 0, 1)' : 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    });
+  }
+
+  function adjustToLocalTime(utcTime, isSunset = false) {
+    const localTimeZone = 'Atlantic/Bermuda';
+    const date = new Date();
+    const [time, period] = utcTime.split(' ');
+    let [hours, minutes, seconds] = time.split(':').map(Number);
+
+    if (period === "PM" && hours !== 12) {
+      hours += 12;
+    } else if (period === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    // Convert to Bermuda time with DST handling
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, seconds));
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: localTimeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    }).format(utcDate);
+  }
+
+  // Fetch sunrise and sunset times
+  jQuery.ajax({
+    url: "https://api.sunrise-sunset.org/json?lat=32.2949&lng=-64.7830&date=today",
+    type: 'GET',
+    dataType: 'json',
+    success: function (data) {
+      const sunriseTimeUTC = data.results.sunrise;
+      const sunsetTimeUTC = data.results.sunset;
+      console.log("UTC Sunrise:", sunriseTimeUTC, "UTC Sunset:", sunsetTimeUTC);
+
+      const sunriseTime = adjustToLocalTime(sunriseTimeUTC);
+      const sunsetTime = adjustToLocalTime(sunsetTimeUTC, true);
+
+      console.log("Adjusted Sunrise:", sunriseTime);
+      console.log("Adjusted Sunset:", sunsetTime);
+
+      $(document).ready(function () {
+        $.getJSON('/data', function (tideData) {
+          console.log("✅ Raw Tide Data:", tideData);
+
+          if (!tideData.times) {
+            console.error("❌ Error: `tideData.times` is missing or undefined!");
+            return;
+          }
+
+          console.log("✅ Tide Timestamps (Raw Data):", tideData.times);
+
+          // Convert timestamps to simplified hour labels
+          const fullHourLabels = tideData.times.map(time => {
+            let hour = parseInt(time.split(" ")[1].split(":")[0], 10);  // Extract hour from "YYYY-MM-DD HH:MM"
+            return `${hour}:00`;
+          });
+
+          // Show only 6:00, 12:00, and 18:00
+          const desiredLabels = fullHourLabels.map(label =>
+            ["6:00", "12:00", "18:00"].includes(label) ? label : ""
+          );
+
+          var ctx = document.getElementById('myChartTide').getContext('2d');
+          var myChartTide = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: desiredLabels,  // ✅ SIMPLIFIED X-AXIS LABELS
+              datasets: [{
+                label: "Bermuda's tides today",
+                data: tideData.values,
+                borderColor: 'rgba(255, 0, 0, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.4,
+                borderWidth: 3
+              }]
+            },
+            options: {
+              scales: {
+                y: { beginAtZero: true },
+                x: {
+                  ticks: { autoSkip: true, maxRotation: 0 }  // ✅ Keeps only key times
+                }
+              },
+              animation: {
+                onComplete: function (animation) {
+                  drawTimeLinesAndShading(animation, sunriseTime, sunsetTime);
+                }
+              },
+              plugins: {
+                title: {
+                  display: true,
+                  text: 'Bermuda Tides Today',
+                  font: { size: 10 },
+                  padding: { top: 10, bottom: 10 }
+                },
+                legend: { display: false }
+              },
+              elements: { point: { radius: 0 } }
+            }
+          });
+        }).fail(function (jqxhr, textStatus, error) {
+          console.error("❌ AJAX Request to /data Failed! Status:", textStatus, "| Error:", error);
+        });
+      });
+    }
+  });  
+</script>
+
+
+
+{% endblock %}
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+  integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+  integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+
+</body>
+
+</html>

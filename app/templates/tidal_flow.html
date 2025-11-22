@@ -1,0 +1,214 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Bermuda Tidal Flow
+{% endblock %}
+
+{% block content %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tidal Flow</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/date-fns-tz"></script>
+  <script src="https://unpkg.com/chartjs-plugin-annotation@1.0.2"></script>
+
+  <style>
+    :root{
+      --panel:#0f2238; --panel-text:#e6eef8; --panel-stroke:rgba(255,255,255,.14);
+      --page-max:1100px;
+    }
+    .chart-card{
+      max-width: var(--page-max);
+      margin: 10px auto 16px;
+      background: var(--panel);
+      color: var(--panel-text);
+      border:1px solid var(--panel-stroke);
+      border-radius:18px;
+      box-shadow:0 10px 28px rgba(0,0,0,.28);
+      overflow:hidden;
+    }
+    .card-header{
+      padding:12px 16px 8px;
+      text-align:center;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .card-header h2{
+      margin:0;
+      font-weight:600;
+      font-size:1.35rem;
+      color: var(--panel-text);
+    }
+    .card-body{ padding: 10px 12px; }
+    .card-body canvas{ width:100% !important; height:56vh !important; }
+    .card-footer{
+      padding:12px;
+      display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+    .pill{
+      padding:6px 10px; border-radius:10px; font-size:.9rem;
+      color:#0f2238; background:#b9e1f2; border:1px solid rgba(0,0,0,.06);
+    }
+    .pill.light  { background:#7bcde8; }
+    .pill.mid    { background:#2fa8dd; color:white; }
+    .pill.strong { background:#f4a261; color:#242424; }
+    .pill.vstrong{ background:#e63946; color:white; }
+    .pill.extreme{ background:#a4161a; color:white; }
+    @media (max-width:768px){
+      .card-body canvas{ height:48vh !important; }
+    }
+    @media (max-width:480px){
+      .card-header h2{ font-size:1.1rem; }
+      .card-body canvas{ height:44vh !important; }
+      .pill{ font-size:.8rem; padding:5px 8px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="chart-card">
+    <div class="card-header">
+      <h2>Tidal Flow (Bars) &amp; Tide Height (Line)</h2>
+    </div>
+
+    <div class="card-body">
+      <canvas id="slopeChart"></canvas>
+    </div>
+
+    <div class="card-footer">
+      <span class="pill">Very Weak <small>(0–25th %)</small></span>
+      <span class="pill light">Weak <small>(25–50th %)</small></span>
+      <span class="pill mid">Moderate <small>(50–75th %)</small></span>
+      <span class="pill strong">Strong <small>(75–95th %)</small></span>
+      <span class="pill vstrong">Very Strong <small>(95–99th+ %)</small></span>
+      <span class="pill extreme">Extreme <small>(99th+ %)</small></span>
+    </div>
+  </div>
+
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const slopeEl = document.getElementById('slopeChart');
+      if (!slopeEl) { console.error('slopeChart canvas not found'); return; }
+
+      // ---- Data from Jinja ----
+      const thresholds = JSON.parse('{{ thresholds_json | safe }}');
+      const slopeData  = JSON.parse('{{ slope_data_json | safe }}');
+      const heightData = JSON.parse('{{ height_data_json | safe }}');
+      const fixedMaxY  = 0.35;
+
+      if (!Array.isArray(slopeData) || slopeData.length === 0) {
+        console.error('No slopeData – check your template vars'); return;
+      }
+      if (!Array.isArray(heightData) || heightData.length === 0) {
+        console.error('No heightData – check your template vars'); return;
+      }
+      if (!thresholds || thresholds.length !== 5) {
+        console.warn('Thresholds missing or wrong length:', thresholds);
+      }
+
+      const colorMap = {
+        "very weak": "#b9e1f2",
+        "weak": "#7bcde8",
+        "moderate": "#2fa8dd",
+        "strong": "#f4a261",
+        "very strong": "#e63946",
+        "extreme": "#a4161a",
+      };
+
+      const isPhone  = window.matchMedia("(max-width: 480px)").matches;
+      const isTablet = window.matchMedia("(max-width: 768px)").matches && !isPhone;
+
+      const containerW = slopeEl.parentElement?.clientWidth || 800;
+      const approxPoints = slopeData.length;
+      const barThickness = Math.max(2, Math.min(10, Math.floor(containerW / (approxPoints * 1.6))));
+
+      const tickColor = '#e6eef8';                 // text on dark
+      const gridColor = 'rgba(255,255,255,.10)';   // subtle grid
+
+      new Chart(slopeEl.getContext('2d'), {
+        type: 'bar',
+        data: {
+          datasets: [
+            {
+              label: 'Tide Flow (m/hr)',
+              data: slopeData.map(p => ({ x: p.time, y: p.slope })),
+              backgroundColor: slopeData.map(p => colorMap[p.strength] || '#7bcde8'),
+              yAxisID: 'y',
+              type: 'bar',
+              barThickness,
+              maxBarThickness: barThickness,
+            },
+            {
+              label: 'Tide Height',
+              data: heightData.map(p => ({ x: p.time, y: p.height })),
+              borderColor: '#cfd6df',
+              borderWidth: 2,
+              fill: false,
+              pointRadius: 0,
+              tension: 0.4,
+              yAxisID: 'y',
+              type: 'line'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,   // height is set by CSS
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: {
+              min: -fixedMaxY,
+              max: fixedMaxY,
+              grid: { color: gridColor },
+              ticks: { stepSize: 0.05, color: tickColor },
+              title: { display: !isPhone, text: 'Rate of Change (m/hr)', color: tickColor }
+            },
+            x: {
+              type: 'time',
+              time: {
+                zone: 'America/Bermuda',
+                displayFormats: isPhone ? { hour: 'EEE ha' } : { hour: 'EEE d MMM ha' },
+                tooltipFormat: 'EEE d MMM, h:mm a'
+              },
+              grid: { color: 'rgba(255,255,255,.05)' },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: isPhone ? 5 : (isTablet ? 9 : 14),
+                maxRotation: isPhone ? 0 : (isTablet ? 20 : 45),
+                minRotation: isPhone ? 0 : (isTablet ? 20 : 45),
+                color: tickColor
+              },
+              title: { display: !isPhone, text: 'Date and Time', color: tickColor }
+            }
+          },
+          plugins: {
+            legend: { display: false },  // using the footer pills instead
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  if (ctx.dataset.type === 'line') return `Height: ${ctx.parsed.y.toFixed(2)} m`;
+                  const p = slopeData[ctx.dataIndex];
+                  const strength = (p?.strength || 'unknown').replace(/\b\w/g, l => l.toUpperCase());
+                  return `Flow: ${ctx.parsed.y.toFixed(3)} m/hr • ${strength}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Chart init failed:', err);
+    }
+  });
+  </script>
+
+</body>
+
+
+{% endblock %}

@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<!--Line chart with gradient fill below the plot> -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dew Point Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        #dewPointChart {
+            width: 100%;  /* Responsive width */
+            height: 400px; /* Fixed height */
+        }
+    </style>
+</head>
+<body>
+    <h1>Dew Point Chart</h1>
+    <canvas id="dewPointChart"></canvas>
+    <script>
+        function createGradient(ctx) {
+            // Adjust the start and end points of the gradient
+            // Starting lower on the canvas (e.g., 25% down)
+            const startY = ctx.canvas.height * 0.15; // Starts 25% down the canvas
+            const endY = ctx.canvas.height;          // Ends at the bottom of the canvas
+
+            const gradient = ctx.createLinearGradient(0, startY, 0, endY);
+            gradient.addColorStop(0, 'red');   // Red at the starting point
+            gradient.addColorStop(0.5, 'green'); // Green in the middle
+            gradient.addColorStop(1, 'blue');  // Blue at the end
+            return gradient;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('dewPointChart');
+            const ctx = canvas.getContext('2d');
+            canvas.height = 400;  // Set a fixed height for the canvas
+
+            const gradient = createGradient(ctx);
+
+            // These data should come from your Flask backend. Adjust as necessary.
+            const labels = JSON.parse('{{ forecasts|map(attribute="time")|list|tojson|safe }}');
+            const dataPoints = JSON.parse('{{ forecasts|map(attribute="dew_point")|list|tojson|safe }}');
+
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Dew Point (°F)',
+                        data: dataPoints,
+                        backgroundColor: gradient,
+                        borderColor: 'rgba(0, 0, 0, 0.7)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, h'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time of Day'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Dew Point (°F)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
