@@ -1,0 +1,65 @@
+# Ignore Python virtual environments
+env/
+shared_env/
+
+# Ignore system files
+.DS_Store
+
+# Ignore any other specific files or folders
+__pycache__/
+*.pyc
+
+# ignore model file too large for github
+# Ignore model files
+wind_model.pkl
+wind_model_with_bias.pkl
+wind_model_with_sin_cos.pkl
+
+
+# ignore cron log and cron_env_log
+cron_env.log
+cron.log
+
+# creds.json cannot be shared publicly
+creds.json
+
+# Python cache and compiled files
+__pycache__/
+app/__pycache__/
+*.pyc
+
+# IDE and editor settings
+.vscode/
+
+# Ignore VS Code workspace files
+*.code-workspace
+
+# Temporary or test files
+test.py
+test2.py
+
+# Folders for temporary or unused files
+app/templates/for deletion/
+
+# Scratch for testing a developing
+scratch/
+
+# creds.json cannot be shared publicly
+creds.json
+
+#images and images folder does not need tracking
+images/
+*.png
+
+#garmin fit sdk files
+health_data/FitSDKRelease_21.158.00/
+
+crescentapp/app/modules/wind_data_functionscbakup 20Oct2025.py
+crescentapp/app/templates/wind_tide_dir.messed up trying to correct wind history for mobile.html
+crescentapp/app/templates/wind_tide_dir.bakup3Nov2025.html
+scrapers/archive/archive_old_rows.bakup6Nov2025.py
+crescentapp/app/modules/wind_data_functionsc.bakup pre forcing pearl for station testing.py
+delete_me/
+*.pyc
+__pycache__/
+scratch/
