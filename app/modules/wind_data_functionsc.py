@@ -134,7 +134,7 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
     return avg_wind_spd, wind_max, wind_min, avg_wind_dir, labels, series
 
 # ---- toggle (top of wind_data_functionsc.py is fine) ----
-USE_PRED_ONLY = True   # set False when Pearl is healthy again
+USE_PRED_ONLY = False   # set False when Pearl is healthy again
 
 
 def fetch_auto_pearl_then_pred(start=None, end=None):
@@ -159,8 +159,8 @@ def fetch_auto_pearl_then_pred(start=None, end=None):
         )
 
     if USE_PRED_ONLY:
-        res = fetch_pred_cres_data(start, end, sheet_name="pred_cresc")
-        return (res if ok(res) else (None, None, None, None, [], [])), "pred_cresc"
+        res = fetch_pred_cres_data(start, end, sheet_name="Pearl")
+        return (res if ok(res) else (None, None, None, None, [], [])), "Pearl"
 
     res = fetch_pred_cres_data(start, end, sheet_name="Pearl")
     if ok(res) and not is_stale_wind(res[5]):
