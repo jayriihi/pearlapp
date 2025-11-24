@@ -326,18 +326,20 @@ h1::after{
   padding: 8px 10px;                        /* compact padding */
 }
 
-.stat .label{
-  font-size: .72rem;                        /* smaller label */
-  line-height: 1.05;
-  opacity: .85;
+.stat-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
 }
 
-.stat .value{
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  font-size: clamp(0.95rem, 3.0vw, 1.35rem); /* scales down on small screens */
+.stat-cur {
+  font-weight: 600;
+}
+
+.stat-avg {
+  opacity: 0.8;
+  font-size: 0.9em;
 }
 
 /* Make units smaller so numbers stay readable */
@@ -347,6 +349,22 @@ h1::after{
   font-size: .82em;                         /* e.g., “kt”, “°” slightly smaller */
   margin-left: 2px;
 }
+
+.stat-split{
+  display: flex;
+  justify-content: space-between;   /* Cur left, Avg right */
+  align-items: baseline;
+}
+
+.stat-cur{
+  font-weight: 700;                 /* keep Cur slightly stronger */
+}
+
+.stat-avg{
+  opacity: 0.85;                    /* a touch softer for Avg */
+  margin-left: 8px;                 /* small gap if they wrap */
+}
+
 
 /* Slight extra squeeze for small phones */
 @media (max-width: 400px){
@@ -517,6 +535,30 @@ body  { background: var(--bg) !important; }
   background:none;
 }
 
+/* --- shrink stat cards back to old-ish size --- */
+
+.stat .label{
+  font-size: 0.75rem;          /* smaller “Wind / Max / Min / Dir” label */
+}
+
+.stat .value{
+  font-size: 1.1rem;           /* main numbers */
+  line-height: 1.1;
+}
+
+/* Cur / Avg text inside the value */
+.stat .value .stat-cur,
+.stat .value .stat-avg{
+  font-size: 0.95em;           /* a touch smaller than the card’s main size */
+}
+
+@media (max-width: 640px){
+  .stat .value{
+    font-size: .9rem;
+  }
+}
+
+
 </style>
 
 <!-- Header / menu -->
@@ -544,11 +586,26 @@ body  { background: var(--bg) !important; }
       </div>
     </div>
 
-    <div class="stat-grid">
-      <div class="stat"><div class="label">Avg</div><div class="value">{{ past_hour_avg_wind_spd|round(1) }} kt</div></div>
+ <div class="stat-grid">
+  <!-- Wind card -->
+<div class="stat">
+  <div class="label">Avg</div>
+  <div class="value">
+    {{ past_hour_avg_wind_spd|round(1) }} kt
+  </div>
+</div>
+
       <div class="stat"><div class="label">Max</div><div class="value">{{ past_hour_avg_wind_max|round(1) }} kt</div></div>
       <div class="stat"><div class="label">Min</div><div class="value">{{ past_hour_avg_wind_min|round(1) }} kt</div></div>
-      <div class="stat"><div class="label">Dir (avg)</div><div class="value">{{ avg_wind_dir }}°</div></div>
+  <!-- Dir card -->
+<div class="stat">
+  <div class="label">Dir</div>
+  <div class="value stat-split">
+    <span class="stat-cur">Cur {{ cur_wind_dir|round(0) }}°</span>
+    <span class="stat-avg">Avg {{ avg_wind_dir|round(0) }}°</span>
+  </div>
+</div>
+
     </div>
 
     <div class="chart-wrap">
