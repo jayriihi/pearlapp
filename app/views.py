@@ -1,7 +1,6 @@
 import requests
 from datetime import datetime, timedelta
 from flask import render_template, request, session, jsonify, redirect, url_for
-
 from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
 
