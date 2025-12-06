@@ -643,7 +643,7 @@ body  { background: var(--bg) !important; }
   // range flags from Jinja
   const H       = {{ H }};                                   // already set at top
   const isLong  = {{ (H >= 3) | tojson }};
-  const TENSION = {{ (0.25 if H >= 8 else 0.35) | tojson }};
+  const TENSION = 0.3;
 
   // data (use tojson, not |safe)
   const labels = {{ labels | tojson }};
@@ -663,7 +663,7 @@ body  { background: var(--bg) !important; }
       }
       // decimation left off for now to keep things simple
     },
-    elements: { point: { radius: isLong ? 2 : 3, hoverRadius: isLong ? 3 : 5 } },
+    elements: { point: { radius: 2, hoverRadius: 3 } },
     scales: {
       x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxTicksLimit: isLong ? 12 : 8 } },
       y: {
@@ -683,7 +683,9 @@ body  { background: var(--bg) !important; }
       backgroundColor: 'rgba(0,225,209,.15)',
       pointBackgroundColor: AQUA,
       borderWidth: 2,
-      tension: TENSION
+      tension: TENSION,
+      pointRadius: 2,
+      pointHoverRadius: 3
     }]
   };
 
