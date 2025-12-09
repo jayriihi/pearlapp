@@ -175,6 +175,26 @@ h1::after{
   height: 100% !important;
   }
 
+  .chart-container{
+    position: relative;
+    height: 100%;
+  }
+
+  .no-data-overlay{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    opacity: 0.9;
+    background: rgba(15, 34, 56, 0.9);
+    color: var(--panel-text, #e6eef8);
+    display: none;
+  }
+
   @media (max-width:640px){
     .chartBox{ height:220px; }
     .chartBox.tall{ height: 220px; }
@@ -591,18 +611,18 @@ body  { background: var(--bg) !important; }
 <div class="stat">
   <div class="label">Avg</div>
   <div class="value">
-    {{ past_hour_avg_wind_spd|round(1) }} kt
+    {{ (past_hour_avg_wind_spd|round(1)) if wind_available and past_hour_avg_wind_spd is not none else '—' }} kt
   </div>
 </div>
 
-      <div class="stat"><div class="label">Max</div><div class="value">{{ past_hour_avg_wind_max|round(1) }} kt</div></div>
-      <div class="stat"><div class="label">Min</div><div class="value">{{ past_hour_avg_wind_min|round(1) }} kt</div></div>
+      <div class="stat"><div class="label">Max</div><div class="value">{{ (past_hour_avg_wind_max|round(1)) if wind_available and past_hour_avg_wind_max is not none else '—' }} kt</div></div>
+      <div class="stat"><div class="label">Min</div><div class="value">{{ (past_hour_avg_wind_min|round(1)) if wind_available and past_hour_avg_wind_min is not none else '—' }} kt</div></div>
   <!-- Dir card -->
 <div class="stat">
   <div class="label">Dir</div>
   <div class="value stat-split">
-    <span class="stat-cur">Cur {{ cur_wind_dir|round(0) }}°</span>
-    <span class="stat-avg">Avg {{ avg_wind_dir|round(0) }}°</span>
+    <span class="stat-cur">{% if wind_available and cur_wind_dir is not none %}Cur {{ cur_wind_dir|round(0) }}°{% else %}Cur —{% endif %}</span>
+    <span class="stat-avg">{% if wind_available and avg_wind_dir is not none %}Avg {{ avg_wind_dir|round(0) }}°{% else %}Avg —{% endif %}</span>
   </div>
 </div>
 
@@ -610,7 +630,10 @@ body  { background: var(--bg) !important; }
 
     <div class="chart-wrap">
       <div class="chartBox {{ 'tall' if H >= 3 else '' }}">
-        <canvas id="myChart"></canvas>
+        <div class="chart-container wind-current-container">
+          <canvas id="myChart"></canvas>
+          <div class="no-data-overlay" id="wind-no-data-overlay">Wind data currently not available</div>
+        </div>
       </div>
     </div>
   </div>
@@ -623,6 +646,12 @@ body  { background: var(--bg) !important; }
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+<script>
+  const windAvailable = {{ wind_available | default(False) | tojson }};
+  const windError = {{ wind_error | tojson }};
+  const tideAvailable = {{ tide_available | default(False) | tojson }};
+  const tideError = {{ tide_error | tojson }};
+</script>
 
 
 
@@ -646,8 +675,23 @@ body  { background: var(--bg) !important; }
   const TENSION = 0.3;
 
   // data (use tojson, not |safe)
-  const labels = {{ labels | tojson }};
-  const values = {{ values | tojson }};
+  const labelsRaw = {{ labels | default([]) | tojson }};
+  const valuesRaw = {{ values | default([]) | tojson }};
+  const windNoDataOverlay = document.getElementById('wind-no-data-overlay');
+
+  let windLabels = Array.isArray(labelsRaw) ? labelsRaw.slice() : [];
+  let windValues = Array.isArray(valuesRaw) ? valuesRaw.slice() : [];
+  const hasWindSeries = windAvailable && windLabels.length && windValues.length;
+
+  if (!hasWindSeries) {
+    windLabels = [];
+    windValues = [];
+    if (windNoDataOverlay) {
+      windNoDataOverlay.style.display = "block";
+    }
+  } else if (windNoDataOverlay) {
+    windNoDataOverlay.style.display = "none";
+  }
 
   const commonOptions = {
     responsive: true,
@@ -675,10 +719,10 @@ body  { background: var(--bg) !important; }
   };
 
   const windData = {
-    labels,
+    labels: windLabels,
     datasets: [{
       label: "wind speeds",
-      data: values,
+      data: windValues,
       borderColor: AQUA,
       backgroundColor: 'rgba(0,225,209,.15)',
       pointBackgroundColor: AQUA,
@@ -700,23 +744,29 @@ body  { background: var(--bg) !important; }
 
 
   <!-- Tide chart (uniform look + dark-card shading) -->
-  {% if tide_ok %}
   <div class="page-wrap">
     <div class="card-dark">
       <div class="chart-wrap">
         <div class="chartBox tide">
-          <canvas id="myChartTide"></canvas>
+          <div class="chart-container tide-container">
+            <canvas id="myChartTide"></canvas>
+            <div class="no-data-overlay" id="tide-no-data-overlay">Tide data currently not available</div>
+          </div>
         </div>
       </div>
-  
-      <div class="tide-summary dotted">
-        <div><strong>Prev:</strong> {{ 'High' if prev_peak_state=='H' else ('Low' if prev_peak_state=='L' else prev_peak_state) }} at {{ prev_peak_time }}</div>
-        <div><strong>Tide (now):</strong> {{ flow_state_beg }}</div>        
-        <div><strong>Next:</strong> {{ next_peak_state }} at {{ next_peak_time }}</div>
-      </div>
+      {% if tide_ok %}
+        <div class="tide-summary dotted">
+          <div><strong>Prev:</strong> {{ 'High' if prev_peak_state=='H' else ('Low' if prev_peak_state=='L' else prev_peak_state) }} at {{ prev_peak_time }}</div>
+          <div><strong>Tide (now):</strong> {{ flow_state_beg }}</div>        
+          <div><strong>Next:</strong> {{ next_peak_state }} at {{ next_peak_time }}</div>
+        </div>
+      {% else %}
+        <div class="tide-summary dotted">
+          <div>{{ tide_error_msg or 'Tide data temporarily unavailable.' }}</div>
+        </div>
+      {% endif %}
     </div>
   </div>
-  {% endif %}
 
   <!-- —— Wind Direction (vertical, 3h) —— -->
   <div class="page-wrap narrow wd-card">
@@ -724,7 +774,10 @@ body  { background: var(--bg) !important; }
       <div class="chart-title">3hr wind direction history</div>
       <div class="chart-inner">
         <div class="chartBox">
-          <canvas id="wd"></canvas>
+          <div class="chart-container wind-history-container">
+            <canvas id="wd"></canvas>
+            <div class="no-data-overlay" id="wind-history-no-data-overlay">Wind data currently not available</div>
+          </div>
         </div>
       </div>
       <div class="chart-footer">
@@ -740,6 +793,9 @@ body  { background: var(--bg) !important; }
     if (!el) return;                         // safety if DOM changes
     const ctx = el.getContext('2d');
     const DPR = Math.min(2, window.devicePixelRatio || 1);
+    const tideNoDataOverlay = document.getElementById('tide-no-data-overlay');
+    const tideLabelsRaw = {{ tide_labels | default([]) | tojson }};
+    const tideValuesRaw = {{ tide_values | default([]) | tojson }};
 
     // helpers
     function getCurrentX(hour, ca){ const r = hour/24; return ca.left + r*(ca.right-ca.left); }
@@ -769,71 +825,104 @@ body  { background: var(--bg) !important; }
       ctx.restore();
     }
 
-    // sunrise/sunset → tide series → chart
-    jQuery.ajax({
-      url: "https://api.sunrise-sunset.org/json?lat=32.2949&lng=-64.7830&date=today",
-      type: 'GET', dataType: 'json',
-      success: function (data) {
-        function toBDA(utcTime){
-          const tz = 'Atlantic/Bermuda';
-          const d = new Date();
-          const [t, period] = utcTime.split(' ');
-          let [h,m,s] = t.split(':').map(Number);
-          if (period === "PM" && h !== 12) h += 12;
-          if (period === "AM" && h === 12) h = 0;
-          const utcDate = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), h, m, s||0));
-          return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }).format(utcDate);
-        }
-        const sunrise = toBDA(data.results.sunrise);
-        const sunset  = toBDA(data.results.sunset);
+    function parseTideData() {
+      const labels = Array.isArray(tideLabelsRaw) ? tideLabelsRaw.map(String) : [];
+      const values = Array.isArray(tideValuesRaw) ? tideValuesRaw.map(Number) : [];
+      const hasData = tideAvailable && labels.length > 0 && values.length > 0;
 
-        $.getJSON('/data', function (tideData) {
-          const vals   = (tideData.values || []).map(Number);
-          const fullHr = (tideData.times || []).map(t => `${parseInt(t.split(" ")[1].split(":")[0],10)}:00`);
-          const labels = fullHr.map(l => ["6:00","12:00","18:00"].includes(l) ? l : "");
-
-          // scaled y-range
-          const vMin = Math.min(...vals), vMax = Math.max(...vals);
-          const pad  = Math.max((vMax - vMin) * 0.15, 0.2);
-
-          const tideChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: "Bermuda's tides today",
-                data: vals,
-                borderColor: AQUA,
-                backgroundColor: 'rgba(0,225,209,.12)',
-                tension: 0.25,
-                borderWidth: 3,
-                pointRadius: 0
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              devicePixelRatio: DPR,                // crisp
-              scales: {
-                x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxRotation:0 } },
-                y: { beginAtZero:false, min:vMin - pad, max:vMax + pad, grid:{ color: GRID }, ticks:{ color: AQUA } }
-              },
-              plugins: {
-                title: { display:true, text:'Bermuda Tides Today', color:PANEL_TEXT,
-                         font:{ size:14, weight:600, family:'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial' },
-                         padding:{ top:10, bottom:10 } },
-                legend: { display:false }
-              },
-              animation: { onComplete: (a) => drawTimeLinesAndShading(a, sunrise, sunset) },
-              elements: { point: { radius: 0 } }
-            }
-          });
-
-          // make sure it stretches to the final width
-          requestAnimationFrame(() => tideChart.resize());
-        });
+      if (!hasData && tideNoDataOverlay) {
+        tideNoDataOverlay.style.display = 'block';
+      } else if (tideNoDataOverlay) {
+        tideNoDataOverlay.style.display = 'none';
       }
-    });
+
+      return { labels, values, hasData };
+    }
+
+    function buildChart(sunriseTime, sunsetTime){
+      const { labels, values, hasData } = parseTideData();
+      const vals = hasData ? values : [];
+      const times = labels;
+
+      const fullHr = times.map(t => {
+        const parts = String(t || "").split(" ");
+        const timePart = parts[1] || parts[0] || "";
+        const hour = parseInt((timePart.split(":")[0] || "0"), 10);
+        return `${isNaN(hour) ? '' : hour}:00`;
+      });
+      const displayLabels = fullHr.map(l => ["6:00","12:00","18:00"].includes(l) ? l : "");
+
+      const valuesForRange = vals.length ? vals : [0];
+      const vMin = Math.min(...valuesForRange);
+      const vMax = Math.max(...valuesForRange);
+      const pad  = Math.max((vMax - vMin) * 0.15, 0.2);
+
+      const tideChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: displayLabels,
+          datasets: [{
+            label: "Bermuda's tides today",
+            data: vals,
+            borderColor: AQUA,
+            backgroundColor: 'rgba(0,225,209,.12)',
+            tension: 0.25,
+            borderWidth: 3,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          devicePixelRatio: DPR,                // crisp
+          scales: {
+            x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxRotation:0 } },
+            y: { beginAtZero:false, min:vMin - pad, max:vMax + pad, grid:{ color: GRID }, ticks:{ color: AQUA } }
+          },
+          plugins: {
+            title: { display:true, text:'Bermuda Tides Today', color:PANEL_TEXT,
+                     font:{ size:14, weight:600, family:'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial' },
+                     padding:{ top:10, bottom:10 } },
+            legend: { display:false }
+          },
+          animation: { onComplete: (a) => drawTimeLinesAndShading(a, sunriseTime, sunsetTime) },
+          elements: { point: { radius: 0 } }
+        }
+      });
+
+      // make sure it stretches to the final width
+      requestAnimationFrame(() => tideChart.resize());
+    }
+
+    function renderTideChart() {
+      const fallbackSunrise = "6:00:00 AM";
+      const fallbackSunset  = "6:00:00 PM";
+
+      jQuery.ajax({
+        url: "https://api.sunrise-sunset.org/json?lat=32.2949&lng=-64.7830&date=today",
+        type: 'GET', dataType: 'json',
+        success: function (data) {
+          function toBDA(utcTime){
+            const tz = 'Atlantic/Bermuda';
+            const d = new Date();
+            const [t, period] = utcTime.split(' ');
+            let [h,m,s] = t.split(':').map(Number);
+            if (period === "PM" && h !== 12) h += 12;
+            if (period === "AM" && h === 12) h = 0;
+            const utcDate = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), h, m, s||0));
+            return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }).format(utcDate);
+          }
+          const sunrise = toBDA(data.results.sunrise);
+          const sunset  = toBDA(data.results.sunset);
+          buildChart(sunrise, sunset);
+        },
+        error: function () {
+          buildChart(fallbackSunrise, fallbackSunset);
+        }
+      });
+    }
+
+    renderTideChart();
   })();
   </script>
 
@@ -847,6 +936,7 @@ body  { background: var(--bg) !important; }
   // NEW: read the vars you passed from the view, with safe defaults
   const labelsWD = {{ wd_labels | default([]) | tojson }};
   const dirs360  = {{ wd_dirs   | default([]) | tojson }};
+  const windHistoryNoDataOverlay = document.getElementById('wind-history-no-data-overlay');
 
   // parse times from labels
   function parseWhen(t){
@@ -861,12 +951,33 @@ body  { background: var(--bg) !important; }
                       .filter(p=>p.t && Number.isFinite(p.d))
                       .sort((a,b)=>a.t-b.t);
 
-  if (!pairs.length) {
+  const hasHistoryData = windAvailable && pairs.length;
+  if (!hasHistoryData) {
     console.warn('wind_dir_vert: no data');
-  } else {
-    const times = pairs.map(p=>p.t);
-    const dirs  = pairs.map(p=>p.d);
-    
+    if (windHistoryNoDataOverlay) {
+      windHistoryNoDataOverlay.style.display = 'block';
+    }
+  } else if (windHistoryNoDataOverlay) {
+    windHistoryNoDataOverlay.style.display = 'none';
+  }
+
+  let times = [];
+  let dirs = [];
+  let deltas = [];
+  let mean360 = 0;
+  let points = [];
+  const now = new Date();
+  const QUARTER = 15 * 60 * 1000;
+  let yMaxSnap = new Date(Math.ceil(now.getTime()/QUARTER)*QUARTER);
+  let yMinSnap = new Date(yMaxSnap.getTime() - 3*60*60*1000);
+  const FIVE_MIN = 5 * 60 * 1000;
+  let yMinVis  = new Date(yMinSnap.getTime() - FIVE_MIN); // small top headroom
+  let xMin = -180;
+  let xMax = 180;
+
+  if (hasHistoryData) {
+    times = pairs.map(p=>p.t);
+    dirs  = pairs.map(p=>p.d);
 
     // --- update footer with latest value ---
     const footerEl = document.getElementById('lbl-current');
@@ -880,35 +991,38 @@ body  { background: var(--bg) !important; }
     const S = dirs.reduce((a,d)=>a+Math.sin(toRad(d)),0);
     const C = dirs.reduce((a,d)=>a+Math.cos(toRad(d)),0);
     const meanDeg = toDeg(Math.atan2(S,C));
-    const mean360 = ((meanDeg % 360) + 360) % 360;
+    mean360 = ((meanDeg % 360) + 360) % 360;
     const delta = d => ((d - meanDeg + 540) % 360) - 180;
-    const deltas = dirs.map(delta);
+    deltas = dirs.map(delta);
 
     // y-axis = time (last 3h snapped to 15-min)
     const tms = times.map(t=>t.getTime());
     const yMaxRaw = new Date(Math.max(...tms));
-    const QUARTER = 15 * 60 * 1000;
-    const yMaxSnap = new Date(Math.ceil(yMaxRaw.getTime()/QUARTER)*QUARTER);
-    const yMinSnap = new Date(yMaxSnap.getTime() - 3*60*60*1000);
-    const FIVE_MIN = 5 * 60 * 1000;
-    const yMinVis  = new Date(yMinSnap.getTime() - FIVE_MIN); // small top headroom
-
+    yMaxSnap = new Date(Math.ceil(yMaxRaw.getTime()/QUARTER)*QUARTER);
+    yMinSnap = new Date(yMaxSnap.getTime() - 3*60*60*1000);
+    yMinVis  = new Date(yMinSnap.getTime() - FIVE_MIN); // small top headroom
 
     // x span based on spread
     const PAD=5, maxAbs = deltas.length ? Math.max(...deltas.map(Math.abs)) : 50;
     const span = Math.max(100, Math.min(360, 2*maxAbs + 2*PAD));
-    const xMin = -span/2, xMax = span/2;
+    xMin = -span/2; xMax = span/2;
 
-    const points = times.map((t,i)=>({ x:deltas[i], y:t }));
+    points = times.map((t,i)=>({ x:deltas[i], y:t }));
     if (yMaxSnap > times.at(-1)) points.push({ x:deltas.at(-1), y:yMaxSnap });
+  } else {
+    const footerEl = document.getElementById('lbl-current');
+    if (footerEl) {
+      footerEl.textContent = 'Current dir —';
+    }
+  }
 
-    // reference line at x=0 labelled with mean
-    const refLine = { /* ...unchanged... */ };
+  // reference line at x=0 labelled with mean
+  const refLine = { /* ...unchanged... */ };
 
-    const el = document.getElementById('wd');
-    const existing = Chart.getChart(el); if (existing) existing.destroy();
+  const el = document.getElementById('wd');
+  const existing = Chart.getChart(el); if (existing) existing.destroy();
 
-    new Chart(el, {
+  new Chart(el, {
   type: 'line',
   data: {
     datasets: [{
@@ -995,7 +1109,6 @@ body  { background: var(--bg) !important; }
 });
 
 
-  }
 </script>
 
 

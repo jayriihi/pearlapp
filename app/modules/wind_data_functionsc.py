@@ -4,6 +4,10 @@ from datetime import timedelta, datetime
 import pytz
 from collections import Counter
 
+class NoWindDataError(Exception):
+    """Raised when no wind data is available for the requested period."""
+    pass
+
 # Define timezones globally
 bda_tz = pytz.timezone("Atlantic/Bermuda")
 uk_tz = pytz.timezone("Europe/London")
@@ -11,7 +15,8 @@ uk_tz = pytz.timezone("Europe/London")
 # ---- data source config ----
 SHEET_PRIMARY = "Pearl"
 SHEET_FALLBACK = "pred_cresc"   # keep as a manual backup option
-ACTIVE_SHEET = SHEET_PRIMARY    # change this line to swap sources
+SHEET_SHEET1 = "Sheet1"         # optional third sheet
+ACTIVE_SHEET = SHEET_SHEET1   # change this line to swap sources
 
 
 def get_active_sheet():
@@ -241,9 +246,9 @@ def _pearl_quik(hours):
     # Use the same window + sheet as everything else
     sesh = fetch_sheet_window_df(start, end, sheet_name=sheet)
 
-    if sesh.empty:
+    if sesh is None or sesh.empty:
         print(f"[_pearl_quik] empty slice for {hours}h, {start} → {end}, sheet={sheet}")
-        return None, None, None, None, None, None, [], []
+        raise NoWindDataError("No wind data available for the requested period")
 
     # Reuse existing averaging logic
     avg_wind_spd, wind_max, wind_min, avg_wind_dir = get_wind_speed_data(sesh)

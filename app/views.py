@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 from flask import render_template, request, session, jsonify, redirect, url_for
 from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
+from app.modules.wind_data_functionsc import NoWindDataError
+from app.modules.tide_now import NoTideDataError
 
 
 # ------------------------
@@ -120,7 +122,17 @@ def fetch_winds(hours: int):
     else:
         fn = wind_data_functionsc.pearl_1hr_quik
 
-    avg, maxv, minv, avg_dir, cur_dir, cur_spd, labels, series = fn()
+    try:
+        avg, maxv, minv, avg_dir, cur_dir, cur_spd, labels, series = fn()
+    except NoWindDataError:
+        raise
+    except Exception as e:
+        print(f"[fetch_winds] unexpected error: {e}")
+        raise NoWindDataError("Unexpected error retrieving wind data") from e
+
+    if labels is None or series is None or not len(series):
+        raise NoWindDataError("No wind data available for the requested period")
+
     return labels, series, avg, maxv, minv, avg_dir, cur_dir, cur_spd
 
 
@@ -139,26 +151,78 @@ def homepage():
 
 @app.route("/winds/<int:hours>")
 def winds(hours: int):
-    # wind summary for the requested window
-    labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(hours)
+    wind_available = True
+    wind_error = None
+
+    labels = []
+    values = []
+    avg = maxv = minv = avg_dir = cur_dir = cur_spd = None
+
+    try:
+        labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(hours)
+    except NoWindDataError as e:
+        wind_available = False
+        wind_error = str(e)
+    except Exception as e:
+        print(f"[winds] unexpected wind error: {e}")
+        wind_available = False
+        wind_error = "Unexpected error retrieving wind data"
 
     # current wind speed: last point in the speed series if available,
     # otherwise fall back to the computed "cur_spd" from fetch_winds
-    cur_wind_spd = values[-1] if values else None
-    if cur_wind_spd is None and cur_spd is not None:
-        cur_wind_spd = cur_spd
-    if cur_wind_spd is not None:
-        cur_wind_spd = round(cur_wind_spd, 1)
-
-    # current wind direction: prefer cur_dir, fall back to avg_dir
+    cur_wind_spd = None
     cur_wind_dir = None
-    if cur_dir is not None:
-        cur_wind_dir = int(round(cur_dir))
-    elif avg_dir is not None:
-        cur_wind_dir = int(round(avg_dir))
+    if wind_available:
+        cur_wind_spd = values[-1] if values else None
+        if cur_wind_spd is None and cur_spd is not None:
+            cur_wind_spd = cur_spd
+        if cur_wind_spd is not None:
+            cur_wind_spd = round(cur_wind_spd, 1)
+
+        # current wind direction: prefer cur_dir, fall back to avg_dir
+        if cur_dir is not None:
+            cur_wind_dir = int(round(cur_dir))
+        elif avg_dir is not None:
+            cur_wind_dir = int(round(avg_dir))
 
     # tide snapshot
     tide = get_tide_snapshot()
+
+    tide_available = True
+    tide_error = None
+    tide_labels = []
+    tide_values = []
+
+    try:
+        tide_labels, tide_values = tide_now.fetch_tide_predictions()
+    except NoTideDataError as e:
+        tide_available = False
+        tide_error = str(e)
+    except Exception as e:
+        print(f"[winds] unexpected tide error: {e}")
+        tide_available = False
+        tide_error = "Unexpected error retrieving tide data"
+
+    # Optional test switch to simulate tide outage without waiting for a real one
+    simulate_tide_down = request.args.get("simulate_tide_down", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if simulate_tide_down:
+        tide_available = False
+        tide_error = "Simulated tide outage"
+        tide_labels = []
+        tide_values = []
+        # also suppress the tide summary when simulating an outage
+        tide["tide_ok"] = False
+        tide["tide_error_msg"] = tide_error
+        tide["flow_state_beg"] = None
+        tide["prev_peak_time_disp"] = None
+        tide["prev_peak_state_disp"] = None
+        tide["next_peak_time_disp"] = None
+        tide["next_peak_state_disp"] = None
 
     # 3h wind direction history for the vertical chart
     wd_labels, wd_dirs = get_wind_dir_history()
@@ -198,6 +262,12 @@ def winds(hours: int):
         is_modeled=False,   # Pearl real data
         wd_labels=wd_labels,
         wd_dirs=wd_dirs,
+        wind_available=wind_available,
+        wind_error=wind_error,
+        tide_available=tide_available,
+        tide_error=tide_error,
+        tide_labels=tide_labels,
+        tide_values=tide_values,
     )
 
 
@@ -311,16 +381,23 @@ def wind():
 
 @app.route("/graph_temp")
 def graph_temp():
-    (
-        avg_wind_spd,
-        wind_max,
-        wind_min,
-        avg_wind_dir,
-        cur_wind_dir,
-        cur_wind_spd,
-        date_time_index_series_str,
-        wind_spd_series,
-    ) = wind_data_functionsc.pearl_1hr_quik()
+    try:
+        (
+            avg_wind_spd,
+            wind_max,
+            wind_min,
+            avg_wind_dir,
+            cur_wind_dir,
+            cur_wind_spd,
+            date_time_index_series_str,
+            wind_spd_series,
+        ) = wind_data_functionsc.pearl_1hr_quik()
+    except NoWindDataError as e:
+        print(f"[graph_temp] {e}")
+        avg_wind_spd = wind_max = wind_min = avg_wind_dir = None
+        cur_wind_dir = cur_wind_spd = None
+        date_time_index_series_str = []
+        wind_spd_series = []
 
 
     return render_template(
@@ -403,27 +480,14 @@ def tide_home():
 
 @app.route("/data")
 def data():
-    # Get the current date and format it as 'yyyymmdd'
-    current_date = datetime.today().strftime("%Y%m%d")
-
-    # NOAA API request (already in Bermuda local time)
-    noaa_api_url = (
-        "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
-        f"?product=predictions&application=NOS.COOPS.TAC.WL"
-        f"&begin_date={current_date}&end_date={current_date}"
-        "&datum=MLLW&station=2695540&time_zone=lst_ldt"
-        "&units=english&interval=h&format=json"
-    )
-    r = requests.get(noaa_api_url)
-    data = r.json()
-
-    if "predictions" in data:
-        predictions = data["predictions"]
-        values = [i["v"] for i in predictions]
-        times = [i["t"] for i in predictions]
+    try:
+        times, values = tide_now.fetch_tide_predictions()
         return jsonify({"values": values, "times": times})
-
-    return jsonify({"error": "No data available"})
+    except NoTideDataError as e:
+        return jsonify({"error": str(e)})
+    except Exception as e:
+        print(f"[data] unexpected tide error: {e}")
+        return jsonify({"error": "No tide data available"})
 
 
 @app.route("/wind_dir")

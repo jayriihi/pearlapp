@@ -4,6 +4,11 @@ import datetime as dt
 from datetime import timedelta, datetime
 
 
+class NoTideDataError(Exception):
+    """Raised when no tide data is available for the requested period."""
+    pass
+
+
 
 
 def format_date_time():
@@ -153,4 +158,52 @@ def get_tide_data_for_now():
 
 '''print(get_tide_data_for_now())'''
 
+
+def fetch_tide_predictions(current_date=None):
+    """
+    Fetch tide predictions for a single day (hourly), returning (times, values).
+    Raises NoTideDataError when data is missing or cannot be fetched.
+    """
+    if current_date is None:
+        current_date = datetime.today()
+
+    if isinstance(current_date, datetime):
+        current_date = current_date.date()
+    if hasattr(current_date, "strftime"):
+        current_date_str = current_date.strftime("%Y%m%d")
+    else:
+        current_date_str = str(current_date)
+
+    noaa_api_url = (
+        "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
+        f"?product=predictions&application=NOS.COOPS.TAC.WL"
+        f"&begin_date={current_date_str}&end_date={current_date_str}"
+        "&datum=MLLW&station=2695540&time_zone=lst_ldt"
+        "&units=english&interval=h&format=json"
+    )
+
+    try:
+        r = requests.get(noaa_api_url)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        raise NoTideDataError("No tide data available for the requested period") from e
+
+    predictions = data.get("predictions")
+    if not predictions:
+        raise NoTideDataError("No tide data available for the requested period")
+
+    values = []
+    times = []
+    for p in predictions:
+        try:
+            values.append(float(p.get("v")))
+            times.append(p.get("t"))
+        except Exception:
+            continue
+
+    if not values or not times:
+        raise NoTideDataError("No tide data available for the requested period")
+
+    return times, values
 
