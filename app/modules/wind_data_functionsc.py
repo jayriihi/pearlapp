@@ -16,7 +16,7 @@ uk_tz = pytz.timezone("Europe/London")
 SHEET_PRIMARY = "Pearl"
 SHEET_FALLBACK = "pred_cresc"   # keep as a manual backup option
 SHEET_SHEET1 = "Sheet1"         # optional third sheet
-ACTIVE_SHEET = SHEET_SHEET1   # change this line to swap sources
+ACTIVE_SHEET = SHEET_PRIMARY   # change this line to swap sources
 
 
 def get_active_sheet():

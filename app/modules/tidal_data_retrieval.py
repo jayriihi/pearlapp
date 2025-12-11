@@ -6,6 +6,10 @@ from scipy.signal import argrelextrema
 import numpy as np
 import pytz
 
+class NoTideDataError(Exception):
+    """Raised when tide data cannot be retrieved or is unusable."""
+    pass
+
 # Global thresholds
 thresholds = [0.118, 0.176, 0.204, 0.228, 0.268]
 thresholds.sort()
@@ -43,12 +47,34 @@ def fetch_hilo_tide_predictions(station_id, start_date, end_date):
         "format": "json",
     }
     response = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=params)
-    data = response.json()
+    try:
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"[tides] hi/lo request failed: {e}")
+        raise NoTideDataError("No tide data available (HTTP error)")
+
+    try:
+        data = response.json()
+    except ValueError:
+        print(
+            "[tides] hi/lo JSON decode failed. "
+            f"status={response.status_code}, body={response.text[:200]!r}"
+        )
+        raise NoTideDataError("No tide data available (invalid JSON)")
+
+    if "predictions" not in data or not data["predictions"]:
+        raise NoTideDataError("No high/low tide predictions available")
+
     hilo_predictions = pd.DataFrame(data["predictions"])
+    if hilo_predictions.empty or "t" not in hilo_predictions or "v" not in hilo_predictions:
+        raise NoTideDataError("No high/low tide predictions available")
+
     hilo_predictions['t'] = pd.to_datetime(hilo_predictions['t'], errors='coerce')  # ⬅️ make sure it's datetime
     hilo_predictions['t'] = hilo_predictions['t'].dt.tz_localize('UTC').dt.tz_convert('Atlantic/Bermuda')
 
     hilo_predictions['v'] = pd.to_numeric(hilo_predictions['v'])
+    if hilo_predictions.empty or hilo_predictions['t'].isna().all() or hilo_predictions['v'].isna().all():
+        raise NoTideDataError("No high/low tide predictions available")
     return hilo_predictions
 
 def get_detailed_tide_predictions(station_id, start_date, end_date):
@@ -65,12 +91,34 @@ def get_detailed_tide_predictions(station_id, start_date, end_date):
         "format": "json",
     }
     response = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=params)
-    data = response.json()
+    try:
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"[tides] detailed request failed: {e}")
+        raise NoTideDataError("No tide data available (HTTP error)")
+
+    try:
+        data = response.json()
+    except ValueError:
+        print(
+            "[tides] detailed JSON decode failed. "
+            f"status={response.status_code}, body={response.text[:200]!r}"
+        )
+        raise NoTideDataError("No tide data available (invalid JSON)")
+
+    if "predictions" not in data or not data["predictions"]:
+        raise NoTideDataError("No detailed tide predictions available")
+
     detailed_predictions = pd.DataFrame(data["predictions"])
+    if detailed_predictions.empty or "t" not in detailed_predictions or "v" not in detailed_predictions:
+        raise NoTideDataError("No detailed tide predictions available")
+
     detailed_predictions['t'] = pd.to_datetime(detailed_predictions['t'], errors='coerce')
     detailed_predictions['t'] = detailed_predictions['t'].dt.tz_localize('UTC').dt.tz_convert('Atlantic/Bermuda')
 
     detailed_predictions['v'] = pd.to_numeric(detailed_predictions['v'])
+    if detailed_predictions.empty or detailed_predictions['t'].isna().all() or detailed_predictions['v'].isna().all():
+        raise NoTideDataError("No detailed tide predictions available")
     return detailed_predictions
 
 def assign_normalized_tide_positions(df):
@@ -161,10 +209,21 @@ def get_dual_tide_plot_json(station_id, buffered_start, buffered_end, start_date
     hilo_predictions = fetch_hilo_tide_predictions(station_id, start_date, end_date)
     detailed_predictions = get_detailed_tide_predictions(station_id, start_date, end_date)
 
+    if hilo_predictions.empty or detailed_predictions.empty:
+        raise NoTideDataError("No tide data available for requested period")
+    if "t" not in hilo_predictions or "v" not in hilo_predictions or "t" not in detailed_predictions or "v" not in detailed_predictions:
+        raise NoTideDataError("No tide data available for requested period")
+
     # Flow delta between tide turning points
     intermediate_times = calculate_intermediate_times(hilo_predictions)
+    if not intermediate_times:
+        raise NoTideDataError("No tide data available for requested period")
     forecast_tides = find_forecast_at_times(detailed_predictions, intermediate_times)
+    if not forecast_tides:
+        raise NoTideDataError("No tide data available for requested period")
     differences = [forecast_tides[i + 1] - forecast_tides[i] for i in range(len(forecast_tides) - 1)]
+    if not differences:
+        raise NoTideDataError("No tide data available for requested period")
 
     flow_data_json = json.dumps([
         {"time": intermediate_times[i].isoformat(), "difference": differences[i]}
@@ -182,6 +241,8 @@ def get_dual_tide_plot_json(station_id, buffered_start, buffered_end, start_date
     df = df.dropna()
     df = assign_normalized_tide_positions(df)
     df = df.dropna(subset=['normalized_in_tide', 'slope'])
+    if df.empty:
+        raise NoTideDataError("No tide data available for requested period")
 
 
     # Ensure comparison datetimes are timezone-aware
@@ -194,11 +255,15 @@ def get_dual_tide_plot_json(station_id, buffered_start, buffered_end, start_date
     detailed_predictions = detailed_predictions[
         (detailed_predictions['t'] >= start_date) & (detailed_predictions['t'] <= end_date)
     ]
+    if df.empty or detailed_predictions.empty:
+        raise NoTideDataError("No tide data available for requested period")
 
     # Interpolate + scale tide height to slope timestamps
     slope_times = df['t']
     min_h = detailed_predictions['v'].min()
     max_h = detailed_predictions['v'].max()
+    if pd.isna(min_h) or pd.isna(max_h) or min_h == max_h:
+        raise NoTideDataError("No tide data available for requested period")
     flow_range = fixedMaxY
 
     height_interp = []
@@ -210,6 +275,8 @@ def get_dual_tide_plot_json(station_id, buffered_start, buffered_end, start_date
             "time": t.isoformat(),
             "height": scaled_height
         })
+    if not height_interp:
+        raise NoTideDataError("No tide data available for requested period")
 
     height_data_json = json.dumps(height_interp)
 
@@ -255,7 +322,12 @@ def calculate_tide_slope(detailed_predictions):
 def get_dual_tide_plot_with_slope_json(station_id, start_date, end_date):
     hilo_predictions = fetch_hilo_tide_predictions(station_id, start_date, end_date)
     detailed_predictions = get_detailed_tide_predictions(station_id, start_date, end_date)
+    if hilo_predictions.empty or detailed_predictions.empty:
+        raise NoTideDataError("No tide data available for requested period")
+
     tide_slope = calculate_tide_slope(detailed_predictions)
+    if tide_slope.empty:
+        raise NoTideDataError("No tide data available for requested period")
 
     # Chart-ready format
     slope_data = [{"time": t.astimezone(bermuda_tz).isoformat(), "slope": s} for t, s in zip(tide_slope['t'], tide_slope['slope'])]
@@ -268,18 +340,28 @@ def get_dual_tide_plot_with_slope_json(station_id, start_date, end_date):
 def get_tidal_flow_differences_json(station_id, start_date, end_date):
     # Fetch high and low tide predictions
     hilo_predictions = fetch_hilo_tide_predictions(station_id, start_date, end_date)
+    if hilo_predictions.empty:
+        raise NoTideDataError("No tide data available for requested period")
     
     # Calculate intermediate times between high and low tides
     intermediate_times = calculate_intermediate_times(hilo_predictions)
+    if not intermediate_times:
+        raise NoTideDataError("No tide data available for requested period")
     
     # Fetch detailed tide predictions for the specified period
     detailed_predictions = get_detailed_tide_predictions(station_id, start_date, end_date)
+    if detailed_predictions.empty:
+        raise NoTideDataError("No tide data available for requested period")
     
     # Find forecast tide heights at intermediate times
     forecast_tides = find_forecast_at_times(detailed_predictions, intermediate_times)
+    if not forecast_tides:
+        raise NoTideDataError("No tide data available for requested period")
     
     # Calculate differences between successive forecast tides for analysis
     differences = [forecast_tides[i + 1] - forecast_tides[i] for i in range(len(forecast_tides) - 1)]
+    if not differences:
+        raise NoTideDataError("No tide data available for requested period")
     
     # Convert intermediate_times to ISO format strings within flow_data preparation
     flow_data = [{"time": intermediate_times[i].isoformat(), "difference": differences[i]} for i in range(len(differences))]
@@ -293,16 +375,3 @@ def get_tidal_flow_differences_json(station_id, start_date, end_date):
     
     #print(flow_data_json, hilo_data_json)
     return flow_data_json, hilo_data_json
-
-# Example usage
-station_id = 2695540  # Bermuda, St George's
-start_date = datetime.now() - timedelta(days=1)
-end_date = datetime.now()
-flow_data_json, hilo_data_json = get_tidal_flow_differences_json(station_id, start_date, end_date)
-
-# Depending on how you handle the response in Flask, you might send these JSON strings directly
-# or encapsulate them in a response object if needed.
-
-
-
-
