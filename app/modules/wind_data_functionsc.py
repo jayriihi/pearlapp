@@ -3,6 +3,14 @@ import datetime as dt
 from datetime import timedelta, datetime
 import pytz
 from collections import Counter
+import requests
+import io
+
+# Shared Google Sheet config
+GSHEET_ID = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
+NUM_ROWS = 2016
+SHEET_GIDS = {"Pearl": 0}  # known gid mapping; others fall back to gviz
+
 
 class NoWindDataError(Exception):
     """Raised when no wind data is available for the requested period."""
@@ -122,19 +130,8 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
         string_start_time = one_hour_ago_bda.strftime("%Y-%m-%d %H:%M")
         string_end_time = now_bda.strftime("%Y-%m-%d %H:%M")
 
-    gsheetid = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
-    num_rows = 2016
-    gsheet_url = (
-        f"https://docs.google.com/spreadsheets/d/{gsheetid}/gviz/tq"
-        f"?tqx=out:csv&sheet={sheet_name}&range=A1:D{num_rows}"
-    )
-
     try:
-        df = pd.read_csv(
-            gsheet_url,
-            skiprows=3,
-            names=["Date/Time", "wind_spd", "wind_max", "wind_dir"],
-        )
+        df = fetch_sheet_csv(sheet_name)
     except Exception as e:
         print(f"Error fetching {sheet_name} data: {e}")
         return None, None, None, None, [], []
@@ -284,6 +281,81 @@ def pearl_8hr_quik():
     return _pearl_quik(8)
 
 
+def _gviz_url(sheet_name, num_rows=NUM_ROWS):
+    cache_bust = int(datetime.now(pytz.utc).timestamp() * 1000)
+    return (
+        f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/gviz/tq"
+        f"?tqx=out:csv&sheet={sheet_name}&range=A1:D{num_rows}&cb={cache_bust}"
+    )
+
+
+def _export_url(sheet_name, num_rows=NUM_ROWS):
+    gid = SHEET_GIDS.get(sheet_name)
+    if gid is None:
+        return None
+    cache_bust = int(datetime.now(pytz.utc).timestamp() * 1000)
+    # export uses gid instead of sheet name
+    return f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/export?format=csv&gid={gid}&range=A1:D{num_rows}&cb={cache_bust}"
+
+
+def fetch_sheet_csv(sheet_name, num_rows=NUM_ROWS):
+    """
+    Fetch the sheet via HTTP with explicit no-cache headers and return a DataFrame.
+    Tries gviz first, then export (gid-based) if the first pull looks stale.
+    """
+    headers = {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "User-Agent": "pearlapp-fetch",
+    }
+
+    urls = [("gviz", _gviz_url(sheet_name, num_rows))]
+    export_url = _export_url(sheet_name, num_rows)
+    if export_url:
+        urls.append(("export", export_url))
+
+    last_exc = None
+    best_df = None
+    best_latest = None
+    best_source = None
+    for source, url in urls:
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            resp.raise_for_status()
+            df = pd.read_csv(
+                io.StringIO(resp.text),
+                skiprows=3,
+                names=["Date/Time", "wind_spd", "wind_max", "wind_dir"],
+            )
+            latest_ts = pd.to_datetime(df["Date/Time"], errors="coerce").max()
+            # Normalize latest_ts to BDA tz so timedelta math is safe
+            if latest_ts is not None and latest_ts.tzinfo is None:
+                latest_ts = bda_tz.localize(latest_ts)
+            now_bda = get_timezone_now()
+
+            # Track the best (freshest) pull seen so far
+            if latest_ts is not None and (best_latest is None or latest_ts > best_latest):
+                best_latest = latest_ts
+                best_df = df
+                best_source = source
+
+            # If the latest row is within 6 minutes of "now", trust this fetch.
+            if latest_ts is not None and (now_bda - latest_ts) <= timedelta(minutes=6):
+                return df
+            # Otherwise try the next URL
+        except Exception as e:
+            last_exc = e
+            print(f"[sheet fetch error] source={source} {e}")
+            continue
+
+    # If we got a usable (though possibly stale) df, return the freshest one
+    if best_df is not None:
+        return best_df
+
+    # If all attempts failed, raise the last exception
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("Sheet fetch failed without exception")
 
 
 def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_name=None):
@@ -301,23 +373,23 @@ def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_na
         string_start_time = one_hour_ago_bda.strftime("%Y-%m-%d %H:%M")
         string_end_time = now_bda.strftime("%Y-%m-%d %H:%M")
 
-    gsheetid = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
-    num_rows = 2016
-    url = (
-        f"https://docs.google.com/spreadsheets/d/{gsheetid}/gviz/tq"
-        f"?tqx=out:csv&sheet={sheet_name}&range=A1:D{num_rows}"
-    )
-
-    df = pd.read_csv(url, skiprows=3, names=["Date/Time", "wind_spd", "wind_max", "wind_dir"])
+    df = fetch_sheet_csv(sheet_name)
     df["Date/Time"] = pd.to_datetime(df["Date/Time"], errors="coerce")
     df = df.dropna(subset=["Date/Time"]).set_index("Date/Time").sort_index()
 
     start_dt = pd.to_datetime(string_start_time)
     end_dt = pd.to_datetime(string_end_time)
+
+    # If sheet has newer rows than our computed end, slide the end forward
+    latest_ts = df.index.max() if not df.empty else None
+    if latest_ts is not None and latest_ts > end_dt:
+        end_dt = latest_ts
+
     sesh = df[
         (df.index >= start_dt - pd.Timedelta(minutes=5))
         & (df.index <= end_dt + pd.Timedelta(minutes=5))
     ].copy()
+
     return sesh.sort_index()
 
 
