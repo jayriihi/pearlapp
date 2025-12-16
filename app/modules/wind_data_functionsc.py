@@ -9,7 +9,8 @@ import io
 # Shared Google Sheet config
 GSHEET_ID = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
 NUM_ROWS = 2016
-SHEET_GIDS = {"Pearl": 0}  # known gid mapping; others fall back to gviz
+# Pearl tab gid copied from sheet URL (?gid=1815185817)
+SHEET_GIDS = {"Pearl": 1815185817}  # known gid mapping; others fall back to gviz
 
 
 class NoWindDataError(Exception):
