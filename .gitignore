@@ -64,3 +64,4 @@ delete_me/
 __pycache__/
 scratch/
 app/views.bakup pre refactor 23Nov2025.py
+app/.DS_Store
