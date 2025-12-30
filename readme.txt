@@ -29,4 +29,19 @@ scroll down to this code and make the change neccessary
           hours -= 4;
 
 
+-----------------------------
+maintenance_mode
+------------------------------
+
+Turn ON:
+touch maintenance.on
+
+Turn OFF:
+rm maintenance.on
+
+Bypass (when maintenance is ON):
+- Set MAINT_BYPASS_KEY in your environment
+- Visit any page with ?bypass=<SECRET>
+  Example: /?bypass=your-secret-here
+- If MAINT_BYPASS_KEY is unset or empty, bypass is disabled.
 
