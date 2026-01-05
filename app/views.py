@@ -93,13 +93,15 @@ def get_tide_snapshot():
     }
 
 
-def get_wind_dir_history():
+def get_wind_dir_history(station_key=None):
     """
     3h wind direction history, JSON-friendly.
     Returns (labels, dirs) or ([], []) on error.
     """
     try:
-        wd_labels_raw, wd_dirs_raw = wind_data_functionsc.wind_dir_3hours()
+        wd_labels_raw, wd_dirs_raw = wind_data_functionsc.wind_dir_3hours(
+            station_key=station_key
+        )
         wd_labels = [str(t) for t in wd_labels_raw]                 # ISO strings are fine
         wd_dirs = [float(d) for d in wd_dirs_raw if d is not None]  # 0–360 floats
         return wd_labels, wd_dirs
@@ -108,22 +110,22 @@ def get_wind_dir_history():
         return [], []
 
 
-def fetch_winds(hours: int):
+def fetch_winds(hours: int, station_key=None):
     """
     Fetch wind data for the given window length (hours).
     Returns (labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd).
     """
-    if hours == 1:
-        fn = wind_data_functionsc.pearl_1hr_quik
-    elif hours == 3:
-        fn = wind_data_functionsc.pearl_3hr_quik
-    elif hours == 8:
-        fn = wind_data_functionsc.pearl_8hr_quik
-    else:
-        fn = wind_data_functionsc.pearl_1hr_quik
-
     try:
-        avg, maxv, minv, avg_dir, cur_dir, cur_spd, labels, series = fn()
+        (
+            avg,
+            maxv,
+            minv,
+            avg_dir,
+            cur_dir,
+            cur_spd,
+            labels,
+            series,
+        ) = wind_data_functionsc.get_wind_data(hours, station_key=station_key)
     except NoWindDataError:
         raise
     except Exception as e:
@@ -151,6 +153,15 @@ def homepage():
 
 @app.route("/winds/<int:hours>")
 def winds(hours: int):
+    raw_station = request.args.get("station")
+    station_key = wind_data_functionsc.resolve_station_key(raw_station)
+    station_param = raw_station if raw_station in wind_data_functionsc.STATIONS else None
+    station_label = wind_data_functionsc.STATIONS[station_key]["label"]
+    stations = [
+        {"key": key, "label": meta["label"]}
+        for key, meta in wind_data_functionsc.STATIONS.items()
+    ]
+
     wind_available = True
     wind_error = None
 
@@ -159,7 +170,10 @@ def winds(hours: int):
     avg = maxv = minv = avg_dir = cur_dir = cur_spd = None
 
     try:
-        labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(hours)
+        labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(
+            hours,
+            station_key=station_key,
+        )
     except NoWindDataError as e:
         wind_available = False
         wind_error = str(e)
@@ -225,7 +239,7 @@ def winds(hours: int):
         tide["next_peak_state_disp"] = None
 
     # 3h wind direction history for the vertical chart
-    wd_labels, wd_dirs = get_wind_dir_history()
+    wd_labels, wd_dirs = get_wind_dir_history(station_key=station_key)
 
     scalar_mean = None
     if hours == 3 and wd_dirs:
@@ -241,6 +255,10 @@ def winds(hours: int):
     return render_template(
         "wind_tide_dir.html",
         hours=hours,
+        station_key=station_key,
+        station_label=station_label,
+        station_param=station_param,
+        stations=stations,
         labels=labels,
         values=values,
         past_hour_avg_wind_spd=avg,
@@ -316,10 +334,23 @@ def windput():
         m = max(0, min(59, m))
         session["duration"] = f"{h}:{m:02d}"
         session["duration_minutes"] = h * 60 + m
+        station_key = wind_data_functionsc.resolve_station_key(
+            request.form.get("station")
+        )
+        session["station_key"] = station_key
 
         return wind()
 
-    return render_template("windput.html")
+    station_key = wind_data_functionsc.DEFAULT_STATION_KEY
+    stations = [
+        {"key": key, "label": meta["label"]}
+        for key, meta in wind_data_functionsc.STATIONS.items()
+    ]
+    return render_template(
+        "windput.html",
+        station_key=station_key,
+        stations=stations,
+    )
 
 
 @app.route("/wind")
@@ -338,7 +369,9 @@ def wind():
         date_time_index_series_str,
         wind_spd_series,
     ) = wind_data_functionsc.get_sesh_wind(
-        session["sessiondatetime"], session["duration"]
+        session["sessiondatetime"],
+        session["duration"],
+        station_key=session.get("station_key"),
     )
 
     # Round and convert to integers for display

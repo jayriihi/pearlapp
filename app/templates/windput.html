@@ -107,6 +107,17 @@
         <input type="hidden" id="duration" name="duration" value="0:00">
       </div>
 
+      <div class="form-row">
+        <label for="station">Station</label>
+        <select id="station" name="station" class="form-control">
+          {% for station in stations %}
+            <option value="{{ station.key }}" {% if station.key == station_key %}selected{% endif %}>
+              {{ station.label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
       <div class="actions">
         <button type="submit" class="btn btn-primary">See what the wind was →</button>
       </div>

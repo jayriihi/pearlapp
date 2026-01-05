@@ -27,6 +27,25 @@ SHEET_FALLBACK = "pred_cresc"   # keep as a manual backup option
 SHEET_SHEET1 = "Sheet1"         # optional third sheet
 ACTIVE_SHEET = SHEET_PRIMARY   # change this line to swap sources
 
+# ---- station mapping ----
+STATIONS = {
+    "pearl": {"label": "Pearl", "sheet": "Pearl"},
+    "crescent": {"label": "Crescent", "sheet": "Sheet1"},
+    "nmb": {"label": "NMB", "sheet": "NMB_data"},
+    "model": {"label": "Cresc. model", "sheet": "pred_cresc"},
+}
+DEFAULT_STATION_KEY = "pearl"
+
+def resolve_station_key(station_key):
+    if not station_key:
+        return DEFAULT_STATION_KEY
+    key = str(station_key).lower()
+    return key if key in STATIONS else DEFAULT_STATION_KEY
+
+def get_station_sheet(station_key=None):
+    key = resolve_station_key(station_key)
+    return STATIONS[key]["sheet"]
+
 
 def get_active_sheet():
     """
@@ -158,7 +177,7 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
     return avg_wind_spd, wind_max, wind_min, avg_wind_dir, labels, series
 
 
-def get_sesh_wind(datetimelocal_str, duration_str):
+def get_sesh_wind(datetimelocal_str, duration_str, station_key=None):
     """
     Main API used by the session card.
     """
@@ -171,8 +190,11 @@ def get_sesh_wind(datetimelocal_str, duration_str):
         sesh_start_time_str,
     ) = format_date_time(datetimelocal_str, duration_str)
 
+    sheet_name = get_station_sheet(station_key)
     avg_wind_spd, wind_max, wind_min, avg_wind_dir, labels, series = fetch_pred_cres_data(
-        string_start_time, string_end_time
+        string_start_time,
+        string_end_time,
+        sheet_name=sheet_name,
     )
 
     if any(x is None for x in [avg_wind_spd, wind_max, wind_min, avg_wind_dir]) or not series:
@@ -228,7 +250,7 @@ def get_window_strings(hours):
     return start, end
 
 
-def _pearl_quik(hours):
+def _pearl_quik(hours, station_key=None):
     """
     Shared helper for 1/3/8hr cards.
 
@@ -239,7 +261,7 @@ def _pearl_quik(hours):
       labels, series
     """
     start, end = get_window_strings(hours)
-    sheet = get_active_sheet()
+    sheet = get_station_sheet(station_key)
 
     # Use the same window + sheet as everything else
     sesh = fetch_sheet_window_df(start, end, sheet_name=sheet)
@@ -270,16 +292,20 @@ def _pearl_quik(hours):
     )
 
 
-def pearl_1hr_quik():
-    return _pearl_quik(1)
+def pearl_1hr_quik(station_key=None):
+    return _pearl_quik(1, station_key=station_key)
 
 
-def pearl_3hr_quik():
-    return _pearl_quik(3)
+def pearl_3hr_quik(station_key=None):
+    return _pearl_quik(3, station_key=station_key)
 
 
-def pearl_8hr_quik():
-    return _pearl_quik(8)
+def pearl_8hr_quik(station_key=None):
+    return _pearl_quik(8, station_key=station_key)
+
+
+def get_wind_data(hours, station_key=None):
+    return _pearl_quik(hours, station_key=station_key)
 
 
 def _gviz_url(sheet_name, num_rows=NUM_ROWS):
@@ -394,13 +420,13 @@ def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_na
     return sesh.sort_index()
 
 
-def wind_dir_3hours():
+def wind_dir_3hours(station_key=None):
     """
     Returns (labels, wind_dirs) for the vertical 3-hr direction history chart.
     Uses the same sheet + window as the 3-hr speed card.
     """
     start, end = get_window_strings(3)
-    sheet = get_active_sheet()
+    sheet = get_station_sheet(station_key)
     print(f"[wind_dir_3hours] window BDA: {start} → {end}, sheet={sheet}")
 
     df = fetch_sheet_window_df(start, end, sheet_name=sheet).sort_index()

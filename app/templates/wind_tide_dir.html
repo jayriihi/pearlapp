@@ -39,18 +39,80 @@ h1::after{
   opacity:.7; border-radius:999px;
 }
 
-/* “Recent winds at Crescent” line */
+/* “Recent winds at …” line */
 .periodMenu p{
   margin: 0 0 2px;
   line-height: 1.12;
+  color: var(--text);
 }
-.periodMenu p a[href="/crescent"]{
-  color: var(--muted);
+.periodMenu{
+  position: relative;
+  z-index: 30;
+}
+.periodMenu .station-select{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.periodMenu .station-label{
   font-weight: 600;
-  text-decoration: none;
+  color: inherit;
 }
-.periodMenu p a[href="/crescent"]:hover{
-  text-decoration: underline;
+.periodMenu .station-anchor{
+  position: relative;
+  display: inline-flex;
+}
+.periodMenu .station-toggle{
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 1;
+}
+.periodMenu .station-toggle:hover{ color: #46566d; }
+.periodMenu .station-toggle:focus{
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(94,112,138,.22);
+  border-radius: 6px;
+}
+.periodMenu .station-toggle .chev{
+  display: inline-block;
+  transform: translateY(1px);
+}
+.periodMenu .station-menu{
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform-origin: top center;
+  transform: translateX(-50%) scaleY(0.9);
+  background: #f4f7fb;
+  border: 1px solid rgba(94, 112, 138, .22);
+  border-radius: 10px;
+  min-width: 140px;
+  box-shadow: 0 10px 24px rgba(15, 34, 56, .12);
+  z-index: 40;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease, transform .12s ease;
+}
+.periodMenu .station-menu.open{
+  opacity: 1;
+  transform: translateX(-50%) scaleY(1);
+  pointer-events: auto;
+}
+.periodMenu .station-menu a{
+  display: block;
+  padding: 6px 10px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: .92rem;
+  white-space: nowrap;
+}
+.periodMenu .station-menu a:hover{
+  background: #f2f5f8;
 }
 
 /* Segmented control */
@@ -585,12 +647,29 @@ body  { background: var(--bg) !important; }
 <div class="page-wrap">
   <div class="periodMenu">
     <center>
-      <!--<p>Recent winds at <a href="/crescent">Crescent</a></p>-->
-      <p>Recent winds on Jay's porch</p>
+      <p>
+        Recent winds at -
+        <span class="station-select">
+          <span class="station-label">{{ station_label }}</span>
+          <span class="station-anchor">
+            <button class="station-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="chev">▾</span>
+            </button>
+            <div class="station-menu" role="menu">
+              {% for station in stations %}
+                <a role="menuitem" href="{{ url_for('winds', hours=H, station=station.key) }}">{{ station.label }}</a>
+              {% endfor %}
+            </div>
+          </span>
+        </span>
+      </p>
       <div class="btn-group">
-        <a class="btn btn-primary {{ 'active' if H==1 else '' }}" href="{{ url_for('winds', hours=1) }}">1 hour</a>
-        <a class="btn btn-primary {{ 'active' if H==3 else '' }}" href="{{ url_for('winds', hours=3) }}">3 hours</a>
-        <a class="btn btn-primary {{ 'active' if H==8 else '' }}" href="{{ url_for('winds', hours=8) }}">8 hours</a>
+        <a class="btn btn-primary {{ 'active' if H==1 else '' }}"
+           href="{{ url_for('winds', hours=1, station=station_key) if station_param else url_for('winds', hours=1) }}">1 hour</a>
+        <a class="btn btn-primary {{ 'active' if H==3 else '' }}"
+           href="{{ url_for('winds', hours=3, station=station_key) if station_param else url_for('winds', hours=3) }}">3 hours</a>
+        <a class="btn btn-primary {{ 'active' if H==8 else '' }}"
+           href="{{ url_for('winds', hours=8, station=station_key) if station_param else url_for('winds', hours=8) }}">8 hours</a>
       </div>
     </center>
   </div>
@@ -651,6 +730,35 @@ body  { background: var(--bg) !important; }
   const windError = {{ wind_error | tojson }};
   const tideAvailable = {{ tide_available | default(False) | tojson }};
   const tideError = {{ tide_error | tojson }};
+</script>
+
+<script>
+  (function() {
+    const toggle = document.querySelector(".station-toggle");
+    const menu = document.querySelector(".station-menu");
+    if (!toggle || !menu) return;
+
+    function closeMenu() {
+      menu.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    toggle.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = toggle.getBoundingClientRect();
+      menu.style.left = `${rect.left + rect.width / 2}px`;
+      menu.style.top = `${rect.bottom + 6}px`;
+      const isOpen = menu.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    menu.addEventListener("click", function(e) {
+      e.stopPropagation();
+    });
+
+    document.addEventListener("click", closeMenu);
+  })();
 </script>
 
 
