@@ -355,6 +355,11 @@ def windput():
 
 @app.route("/wind")
 def wind():
+    station_key = wind_data_functionsc.resolve_station_key(
+        session.get("station_key")
+    )
+    station_label = wind_data_functionsc.STATIONS[station_key]["label"]
+
     (
         string_start_time,
         string_end_time,
@@ -401,6 +406,7 @@ def wind():
         value_hours=h,
         value_minutes=m,
         value_avg_wind_dir=avg_wind_dir,
+        station_label=station_label,
         labels=date_time_index_series_str,
         values=wind_spd_series,
         flow_state_beg=flow_state_beg,

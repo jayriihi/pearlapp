@@ -21,15 +21,9 @@ class NoWindDataError(Exception):
 bda_tz = pytz.timezone("Atlantic/Bermuda")
 uk_tz = pytz.timezone("Europe/London")
 
-# ---- data source config ----
-SHEET_PRIMARY = "Pearl"
-SHEET_FALLBACK = "pred_cresc"   # keep as a manual backup option
-SHEET_SHEET1 = "Sheet1"         # optional third sheet
-ACTIVE_SHEET = SHEET_PRIMARY   # change this line to swap sources
-
 # ---- station mapping ----
 STATIONS = {
-    "pearl": {"label": "Pearl", "sheet": "Pearl"},
+    "pearl": {"label": "Porch", "sheet": "Pearl"},
     "crescent": {"label": "Crescent", "sheet": "Sheet1"},
     "nmb": {"label": "NMB", "sheet": "NMB_data"},
     "model": {"label": "Cresc. model", "sheet": "pred_cresc"},
@@ -45,14 +39,6 @@ def resolve_station_key(station_key):
 def get_station_sheet(station_key=None):
     key = resolve_station_key(station_key)
     return STATIONS[key]["sheet"]
-
-
-def get_active_sheet():
-    """
-    Single source of truth for which sheet all wind calcs should use.
-    For now: no auto-fallback; just set ACTIVE_SHEET above.
-    """
-    return ACTIVE_SHEET
 
 
 def is_stale_wind(series, window=5, threshold=3, decimals=1):
@@ -138,10 +124,10 @@ def format_date_time(datetimelocal_str, duration_str):
 def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_name=None):
     """
     Fetch summary stats + wind speed series for a time window from the
-    configured sheet. If sheet_name is given, it overrides ACTIVE_SHEET.
+    configured sheet. If sheet_name is given, it overrides the default station.
     """
     if sheet_name is None:
-        sheet_name = get_active_sheet()
+        sheet_name = get_station_sheet(DEFAULT_STATION_KEY)
 
     if string_start_time is None or string_end_time is None:
         now_utc = datetime.now(pytz.utc)
@@ -388,10 +374,10 @@ def fetch_sheet_csv(sheet_name, num_rows=NUM_ROWS):
 def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_name=None):
     """
     Return a time-sliced DataFrame with index=datetime and columns:
-    wind_spd, wind_max, wind_dir. Uses the active sheet by default.
+    wind_spd, wind_max, wind_dir. Uses the default station by default.
     """
     if sheet_name is None:
-        sheet_name = get_active_sheet()
+        sheet_name = get_station_sheet(DEFAULT_STATION_KEY)
 
     if string_start_time is None or string_end_time is None:
         now_utc = datetime.now(pytz.utc)
