@@ -5,6 +5,7 @@ from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
 from app.modules.wind_data_functionsc import NoWindDataError
 from app.modules.tide_now import NoTideDataError
+from app.modules.logging_utils import log
 
 
 # ------------------------
@@ -68,7 +69,7 @@ def get_tide_snapshot():
         next_peak_state_disp = _state_full(next_peak_state)
 
     except Exception as e:
-        print(f"[tide] {e}")
+        log(f"[tide] {e}")
         tide_ok = False
         tide_error_msg = "Tide data temporarily unavailable."
 
@@ -106,7 +107,7 @@ def get_wind_dir_history(station_key=None):
         wd_dirs = [float(d) for d in wd_dirs_raw if d is not None]  # 0–360 floats
         return wd_labels, wd_dirs
     except Exception as e:
-        print(f"[wind_dir_vert] {e}")
+        log(f"[wind_dir_vert] {e}")
         return [], []
 
 
@@ -129,7 +130,7 @@ def fetch_winds(hours: int, station_key=None):
     except NoWindDataError:
         raise
     except Exception as e:
-        print(f"[fetch_winds] unexpected error: {e}")
+        log(f"[fetch_winds] unexpected error: {e}")
         raise NoWindDataError("Unexpected error retrieving wind data") from e
 
     if labels is None or series is None or not len(series):
@@ -178,7 +179,7 @@ def winds(hours: int):
         wind_available = False
         wind_error = str(e)
     except Exception as e:
-        print(f"[winds] unexpected wind error: {e}")
+        log(f"[winds] unexpected wind error: {e}")
         wind_available = False
         wind_error = "Unexpected error retrieving wind data"
 
@@ -213,7 +214,7 @@ def winds(hours: int):
         tide_available = False
         tide_error = str(e)
     except Exception as e:
-        print(f"[winds] unexpected tide error: {e}")
+        log(f"[winds] unexpected tide error: {e}")
         tide_available = False
         tide_error = "Unexpected error retrieving tide data"
 
@@ -244,10 +245,8 @@ def winds(hours: int):
     scalar_mean = None
     if hours == 3 and wd_dirs:
         scalar_mean = float(sum(wd_dirs) / len(wd_dirs))
-        print(
-            f"[winds] 3h vert-panel scalar mean = {scalar_mean}"
-        )
-        print(
+        log(f"[winds] 3h vert-panel scalar mean = {scalar_mean}")
+        log(
             f"[winds] 3h vert-panel count = {len(wd_dirs)}, "
             f"min={min(wd_dirs)}, max={max(wd_dirs)}"
         )
@@ -432,7 +431,7 @@ def graph_temp():
             wind_spd_series,
         ) = wind_data_functionsc.pearl_1hr_quik()
     except NoWindDataError as e:
-        print(f"[graph_temp] {e}")
+        log(f"[graph_temp] {e}")
         avg_wind_spd = wind_max = wind_min = avg_wind_dir = None
         cur_wind_dir = cur_wind_spd = None
         date_time_index_series_str = []
@@ -525,7 +524,7 @@ def data():
     except NoTideDataError as e:
         return jsonify({"error": str(e)})
     except Exception as e:
-        print(f"[data] unexpected tide error: {e}")
+        log(f"[data] unexpected tide error: {e}")
         return jsonify({"error": "No tide data available"})
 
 
@@ -657,7 +656,7 @@ def dewpoint():
 
         return render_template("dewpointplus.html", forecasts=hourly_forecasts)
     else:
-        print(f"Failed to retrieve data with status code {response.status_code}")
+        log(f"Failed to retrieve data with status code {response.status_code}")
         return (
             f"Failed to retrieve data with status code {response.status_code}",
             400,

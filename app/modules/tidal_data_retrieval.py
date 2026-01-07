@@ -5,6 +5,7 @@ import json
 from scipy.signal import argrelextrema
 import numpy as np
 import pytz
+from app.modules.logging_utils import log
 
 class NoTideDataError(Exception):
     """Raised when tide data cannot be retrieved or is unusable."""
@@ -50,13 +51,13 @@ def fetch_hilo_tide_predictions(station_id, start_date, end_date):
     try:
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f"[tides] hi/lo request failed: {e}")
+        log(f"[tides] hi/lo request failed: {e}")
         raise NoTideDataError("No tide data available (HTTP error)")
 
     try:
         data = response.json()
     except ValueError:
-        print(
+        log(
             "[tides] hi/lo JSON decode failed. "
             f"status={response.status_code}, body={response.text[:200]!r}"
         )
@@ -94,13 +95,13 @@ def get_detailed_tide_predictions(station_id, start_date, end_date):
     try:
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f"[tides] detailed request failed: {e}")
+        log(f"[tides] detailed request failed: {e}")
         raise NoTideDataError("No tide data available (HTTP error)")
 
     try:
         data = response.json()
     except ValueError:
-        print(
+        log(
             "[tides] detailed JSON decode failed. "
             f"status={response.status_code}, body={response.text[:200]!r}"
         )

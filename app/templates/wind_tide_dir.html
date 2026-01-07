@@ -85,8 +85,8 @@ h1::after{
   position: fixed;
   left: 0;
   top: 0;
-  transform-origin: top center;
-  transform: translateX(-50%) scaleY(0.9);
+  transform-origin: top right;
+  transform: scaleY(0.9);
   background: #f4f7fb;
   border: 1px solid rgba(94, 112, 138, .22);
   border-radius: 10px;
@@ -100,7 +100,7 @@ h1::after{
 }
 .periodMenu .station-menu.open{
   opacity: 1;
-  transform: translateX(-50%) scaleY(1);
+  transform: scaleY(1);
   pointer-events: auto;
 }
 .periodMenu .station-menu a{
@@ -747,9 +747,13 @@ body  { background: var(--bg) !important; }
       e.preventDefault();
       e.stopPropagation();
       const rect = toggle.getBoundingClientRect();
-      menu.style.left = `${rect.left + rect.width / 2}px`;
-      menu.style.top = `${rect.bottom + 6}px`;
       const isOpen = menu.classList.toggle("open");
+      if (isOpen) {
+        const menuWidth = menu.offsetWidth || 0;
+        const left = Math.max(8, rect.right - menuWidth);
+        menu.style.left = `${left}px`;
+        menu.style.top = `${rect.bottom + 6}px`;
+      }
       toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
 

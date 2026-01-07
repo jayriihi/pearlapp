@@ -5,6 +5,7 @@ import pytz
 from collections import Counter
 import requests
 import io
+from app.modules.logging_utils import log
 
 # Shared Google Sheet config
 GSHEET_ID = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
@@ -139,7 +140,7 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
     try:
         df = fetch_sheet_csv(sheet_name)
     except Exception as e:
-        print(f"Error fetching {sheet_name} data: {e}")
+        log(f"Error fetching {sheet_name} data: {e}")
         return None, None, None, None, [], []
 
     df["Date/Time"] = pd.to_datetime(df["Date/Time"], errors="coerce")
@@ -154,7 +155,7 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
     ].copy()
 
     if sesh.empty:
-        print(f"No data available for {sheet_name} in {string_start_time} → {string_end_time}")
+        log(f"No data available for {sheet_name} in {string_start_time} → {string_end_time}")
         return None, None, None, None, [], []
 
     avg_wind_spd, wind_max, wind_min, avg_wind_dir = get_wind_speed_data(sesh)
@@ -253,7 +254,7 @@ def _pearl_quik(hours, station_key=None):
     sesh = fetch_sheet_window_df(start, end, sheet_name=sheet)
 
     if sesh is None or sesh.empty:
-        print(f"[_pearl_quik] empty slice for {hours}h, {start} → {end}, sheet={sheet}")
+        log(f"[_pearl_quik] empty slice for {hours}h, {start} → {end}, sheet={sheet}")
         raise NoWindDataError("No wind data available for the requested period")
 
     # Reuse existing averaging logic
@@ -358,7 +359,7 @@ def fetch_sheet_csv(sheet_name, num_rows=NUM_ROWS):
             # Otherwise try the next URL
         except Exception as e:
             last_exc = e
-            print(f"[sheet fetch error] source={source} {e}")
+            log(f"[sheet fetch error] source={source} {e}")
             continue
 
     # If we got a usable (though possibly stale) df, return the freshest one
@@ -413,12 +414,12 @@ def wind_dir_3hours(station_key=None):
     """
     start, end = get_window_strings(3)
     sheet = get_station_sheet(station_key)
-    print(f"[wind_dir_3hours] window BDA: {start} → {end}, sheet={sheet}")
+    log(f"[wind_dir_3hours] window BDA: {start} → {end}, sheet={sheet}")
 
     df = fetch_sheet_window_df(start, end, sheet_name=sheet).sort_index()
-    print(f"[wind_dir_3hours] fetched rows: {len(df)}")
+    log(f"[wind_dir_3hours] fetched rows: {len(df)}")
     if df.empty:
-        print("[wind_dir_3hours] empty slice")
+        log("[wind_dir_3hours] empty slice")
         return [], []
 
     df = df[pd.to_numeric(df["wind_dir"], errors="coerce").notna()].copy()
