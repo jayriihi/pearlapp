@@ -1,9 +1,9 @@
 import logging
 from app import app
 
-app.debug = False
-logging.getLogger("werkzeug").setLevel(logging.ERROR)
-app.logger.disabled = True
+app.debug = True
+logging.getLogger("werkzeug").setLevel(logging.INFO)
+app.logger.disabled = False
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
     

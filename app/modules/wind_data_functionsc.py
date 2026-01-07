@@ -42,17 +42,25 @@ def get_station_sheet(station_key=None):
     return STATIONS[key]["sheet"]
 
 
-def is_stale_wind(series, window=5, threshold=3, decimals=1):
+def is_stale_wind(series, window=10, threshold=8, decimals=1, min_points=6):
     """
-    Kept around for future automation if you want to detect 'flatlined'
-    wind series. Currently unused.
+    Detect a flatlined wind series (repeated values) over the most recent window.
+    If the series is shorter than the window, use the available length.
     """
-    if not series or len(series) < window:
+    if not series or len(series) < 3:
         return False
-    tail = [round(float(x), decimals) for x in series[-window:] if x is not None]
-    if len(tail) < window:
+    effective_window = min(window, len(series))
+    tail = [round(float(x), decimals) for x in series[-effective_window:] if x is not None]
+    if len(tail) < 3:
         return False
-    return Counter(tail).most_common(1)[0][1] >= threshold
+    if len(tail) >= min_points:
+        tol = 0.5 * (10 ** (-decimals))
+        if (max(tail) - min(tail)) <= tol:
+            return True
+    if len(tail) >= min_points and len(set(tail)) == 1:
+        return True
+    effective_threshold = min(threshold, len(tail))
+    return Counter(tail).most_common(1)[0][1] >= effective_threshold
 
 
 def _dir_delta(a, b):
@@ -267,6 +275,9 @@ def _pearl_quik(hours, station_key=None):
     labels = [t.strftime("%H:%M") for t in sesh.index]
     series = sesh["wind_spd"].tolist()
 
+    if is_stale_wind(series):
+        raise NoWindDataError("Wind data currently not available")
+
     return (
         avg_wind_spd,
         wind_max,
@@ -420,6 +431,11 @@ def wind_dir_3hours(station_key=None):
     log(f"[wind_dir_3hours] fetched rows: {len(df)}")
     if df.empty:
         log("[wind_dir_3hours] empty slice")
+        return [], []
+
+    speed_series = df["wind_spd"].tolist()
+    if is_stale_wind(speed_series):
+        log("[wind_dir_3hours] stale wind series")
         return [], []
 
     df = df[pd.to_numeric(df["wind_dir"], errors="coerce").notna()].copy()
