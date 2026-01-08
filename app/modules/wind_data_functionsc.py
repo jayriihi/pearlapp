@@ -42,9 +42,9 @@ def get_station_sheet(station_key=None):
     return STATIONS[key]["sheet"]
 
 
-def is_stale_wind(series, window=10, threshold=8, decimals=1, min_points=6):
+def _is_stale_series(series, window=10, threshold=8, decimals=1, min_points=6):
     """
-    Detect a flatlined wind series (repeated values) over the most recent window.
+    Detect a flatlined series (repeated values) over the most recent window.
     If the series is shorter than the window, use the available length.
     """
     if not series or len(series) < 3:
@@ -61,6 +61,28 @@ def is_stale_wind(series, window=10, threshold=8, decimals=1, min_points=6):
         return True
     effective_threshold = min(threshold, len(tail))
     return Counter(tail).most_common(1)[0][1] >= effective_threshold
+
+def is_stale_wind(speed_series, dir_series=None, window=10, threshold=8, decimals=1, min_points=6):
+    """
+    Treat wind as stale only if BOTH speed and direction are flatlined.
+    """
+    speed_stale = _is_stale_series(
+        speed_series,
+        window=window,
+        threshold=threshold,
+        decimals=decimals,
+        min_points=min_points,
+    )
+    if dir_series is None:
+        return speed_stale
+    dir_stale = _is_stale_series(
+        dir_series,
+        window=window,
+        threshold=threshold,
+        decimals=decimals,
+        min_points=min_points,
+    )
+    return speed_stale and dir_stale
 
 
 def _dir_delta(a, b):
@@ -275,7 +297,7 @@ def _pearl_quik(hours, station_key=None):
     labels = [t.strftime("%H:%M") for t in sesh.index]
     series = sesh["wind_spd"].tolist()
 
-    if is_stale_wind(series):
+    if is_stale_wind(series, sesh["wind_dir"].tolist()):
         raise NoWindDataError("Wind data currently not available")
 
     return (
@@ -434,7 +456,8 @@ def wind_dir_3hours(station_key=None):
         return [], []
 
     speed_series = df["wind_spd"].tolist()
-    if is_stale_wind(speed_series):
+    dir_series = df["wind_dir"].tolist()
+    if is_stale_wind(speed_series, dir_series):
         log("[wind_dir_3hours] stale wind series")
         return [], []
 
