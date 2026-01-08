@@ -77,8 +77,8 @@
         <div class="collapse navbar-collapse justify-content-center" id="mainNav">
           <div class="nav-set d-flex align-items-center gap-3 mx-auto">
             <!-- logo sits just to the left of the items -->
-            <a class="navbar-brand p-0" href="https://upwindsports.com/" target="_blank" rel="noopener">
-              <img src="/static/logo.jpg" alt="Upwind" class="brand-img">
+            <a class="navbar-brand p-0" href="{{ url_for('upwindsports') }}">
+              <img src="{{ url_for('static', filename='icons/upwinds_logo.jpg') }}" alt="Upwind Sports" class="brand-img">
             </a>
 
             <!-- menu -->
@@ -89,7 +89,7 @@
               <li class="nav-item"><a class="nav-link" href="/dewpointplus">Dew point</a></li>
               <li class="nav-item"><a class="nav-link" href="https://www.windguru.cz/971413" target="_blank" rel="noopener">Windguru</a></li>
               <li class="nav-item"><a class="nav-link" href="http://weather.bm/tools/graphics.asp?name=250KM%20SRI&user=" target="_blank" rel="noopener">BDA Radar</a></li>
-              <li class="nav-item"><a class="nav-link" href="/crescent">About</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">About</a></li>
             </ul>
           </div>
         </div>

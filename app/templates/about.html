@@ -1,20 +1,89 @@
-Pearl Island Station
+{% extends "base.html" %}
+{% block title %}About the Stations{% endblock %}
+{% block content %}
+<style>
+  .station-img{
+    width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+</style>
 
-Pearl Island is the ideal spot to measure the wind speed for water users as it is undisturbed in all directions and in the Geat Sound which is where alot of our wind sports happen.  It is by coutest of the Bermuda Audbon Society that we have been given permission to house our station there.
+<div class="container py-4">
+  <div class="text-center mb-4">
+    <h1 class="display-6 mb-2">About the Stations</h1>
+  </div>
 
-The station is built around a Gill Windsonic 75 ultrasonic anemomneter.  A state of the art sensor used in airports, and marine facilities around the globe.  It boasts an accuracy to within 0.5knot and is rated for wind speeds from 0- 145 knots.
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="row g-0 align-items-stretch">
+          <div class="col-md-5 p-3">
+            <img src="{{ url_for('static', filename='icons/pearl_old.jpeg') }}" alt="Pearl Island Station" class="img-fluid station-img">
+          </div>
+          <div class="col-md-7">
+            <div class="card-body">
+              <h2 class="display-6 mb-3">Pearl Island Station</h2>
+              <p class="fs-6">
+                Pearl Island is the ideal spot to measure wind speed for water users as it is undisturbed in all
+                directions and in the Great Sound, which is where a lot of our wind sports happen. It is by courtesy
+                of the Bermuda Audubon Society that we have been given permission to house our station there.
+              </p>
+              <p class="fs-6 mb-0">
+                The station is built around a Gill WindSonic 75 ultrasonic anemometer, a state-of-the-art sensor used in airports and marine facilities around the globe. It delivers wind-speed accuracy to within 0.5 knots and is rated for wind speeds from 0 to 145 knots.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="row g-0 align-items-stretch">
+          <div class="col-md-5 p-3">
+            <img src="{{ url_for('static', filename='icons/crescent.jpeg') }}" alt="Crescent Station" class="img-fluid station-img">
+          </div>
+          <div class="col-md-7">
+            <div class="card-body">
+              <h2 class="display-6 mb-3">Crescent Station</h2>
+              <p class="fs-6">
+                An autonomous weather station and AIS beacon, managed by Bermuda Maritime Operations Centre,
+                Department of Marine and Ports Services. It is securely affixed to a channel marker on the North
+                Channel, approximately 4 miles north of Dockyard. This location marks a critical point where the
+                channel approach follows a graceful "crescent" shaped bend, leading into a chute in the reef
+                measuring about 200 meters wide.
+              </p>
+              <p class="fs-6 mb-0">
+                Imagine piloting a cruise ship, 330 meters long and 47 meters wide, with an exposed windage area of
+                approximately 25,000 square meters. At this precise bend, knowing the current wind conditions
+                becomes indispensable!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-
-Crescent Station
-
-
-An autonomous weather station and AIS beacon, managed by Bermuda Maritime Operations Center, Department of Marine and Ports Services. It is securely affixed to a channel marker on the North Channel, approximately 4 miles North of Dockyard. This location marks a critical point where the channel approach follows a graceful "crescent" shaped bend, leading into a chute in the reef, measuring just about 200 meters wide.
-
-Imagine piloting a cruise ship, 330 meters long and 47 meters wide, with an exposed windage area of approximately 25,000 square meters. At this precise bend, knowing the current wind conditions becomes indispensable!
-
-
-NMB
-
-National Museum Bermuda is a station run by the Bermuda Weather Service on the roof of the Commissioners House at the tip of Dockyard.
-
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="row g-0 align-items-stretch">
+          <div class="col-md-5 p-3">
+            <img src="{{ url_for('static', filename='NMB.jpeg') }}" alt="NMB Station" class="img-fluid station-img">
+          </div>
+          <div class="col-md-7">
+            <div class="card-body">
+              <h2 class="display-6 mb-3">NMB Station</h2>
+              <p class="fs-6">
+                National Museum Bermuda is a station run by the Bermuda Weather Service on the roof of Commissioner's
+                House at the tip of Dockyard.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

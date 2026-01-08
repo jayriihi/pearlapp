@@ -455,6 +455,16 @@ def crescent_descr():
     return render_template("crescent_descr.html")
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/upwindsports")
+def upwindsports():
+    return render_template("upwindsports.html")
+
+
 @app.route("/error")
 def error():
     return render_template("error.html")
