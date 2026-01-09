@@ -24,7 +24,7 @@ uk_tz = pytz.timezone("Europe/London")
 
 # ---- station mapping ----
 STATIONS = {
-    "pearl": {"label": "Porch", "sheet": "Pearl"},
+    "pearl": {"label": "Pearl", "sheet": "Pearl"},
     "crescent": {"label": "Crescent", "sheet": "Sheet1"},
     "nmb": {"label": "NMB", "sheet": "NMB_data"},
     "model": {"label": "Cresc. model", "sheet": "pred_cresc"},
