@@ -695,7 +695,7 @@ body  { background: var(--bg) !important; }
 </div>
 
       <div class="stat"><div class="label">Max</div><div class="value">{{ (past_hour_avg_wind_max|round(1)) if wind_available and past_hour_avg_wind_max is not none else '—' }} kt</div></div>
-      <div class="stat"><div class="label">Min</div><div class="value">{{ (past_hour_avg_wind_min|round(1)) if wind_available and past_hour_avg_wind_min is not none else '—' }} kt</div></div>
+      <div class="stat"><div class="label">Latest</div><div class="value">{{ (cur_wind_spd|round(1)) if wind_available and cur_wind_spd is not none else '—' }} kt</div></div>
   <!-- Dir card -->
 <div class="stat">
   <div class="label">Dir</div>
