@@ -45,3 +45,8 @@ Bypass (when maintenance is ON):
   Example: /?bypass=your-secret-here
 - If MAINT_BYPASS_KEY is unset or empty, bypass is disabled.
 
+Git commands to pull to python anywhere from repo
+
+git fetch
+git checkout main
+git pull
