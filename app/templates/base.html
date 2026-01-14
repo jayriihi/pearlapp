@@ -49,13 +49,26 @@
       /* Phone tweaks */
       @media (max-width: 430px){
         .navbar{ padding-top: 2px; padding-bottom: 2px; }
-        .navbar-brand img{ height: 18px; }
+        .navbar-brand img{ height: 36px; }
         .navbar-nav .nav-link{ padding: .35rem .5rem; font-size: 1rem; }
+        .nav-set{
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          margin: 0 auto;
+          max-width: 280px;
+          padding-left: 6px;
+        }
+        .navbar-brand{ margin-right: 0; }
+        .navbar-nav{
+          align-items: flex-start !important;
+          text-align: left;
+        }
       }
 
           /* slimmer top bar + smaller logo */
       .topbar { padding-block: 2px; }
-      .brand-img { height: 24px; display:block; }
+      .brand-img { height: 24px; display:block; border-radius: 6px; border: 1px solid rgba(96, 96, 96, .45); }
 
       @media (min-width: 992px){ .navbar-nav.gap-lg-3 { gap: .9rem !important; } }
 

@@ -12,7 +12,7 @@
 
   body{ background: var(--bg) !important; }
 
-  .page-wrap{ max-width:var(--page-max); margin:0 auto; padding:16px; }
+  .page-wrap{ max-width:var(--page-max); margin:0 auto; padding:26px 16px 16px; }
   .card-dark{
     background:var(--panel);
     color:var(--panel-text);
@@ -23,16 +23,16 @@
   }
 
   .page-logo{
-    display:inline-flex;
-    align-items:center;
+    display:flex;
     justify-content:center;
+    margin-bottom: 34px;
   }
 
   .page-logo img{
-    height:56px;
+    height:90px;
     width:auto;
     display:block;
-    border-radius:6px;
+    border-radius:10px;
   }
 
   .hero-media{
@@ -61,18 +61,15 @@
   @media (max-width: 767px){
     .card-dark{ padding:16px; }
     .content-body{ max-width: 100%; }
-    .page-logo img{ height:44px; }
+    .page-logo img{ height:72px; }
   }
 </style>
 
 <div class="page-wrap">
-  <div class="text-center mb-4">
-    <span class="page-logo">
-      <img src="{{ url_for('static', filename='upwinds_logo.jpg') }}" alt="Upwind Sports">
-    </span>
-  </div>
-
   <div class="card-dark">
+    <div class="page-logo">
+      <img src="{{ url_for('static', filename='upwinds_logo.jpg') }}" alt="Upwind Sports">
+    </div>
     <div class="row g-4 align-items-stretch">
       <div class="col-12 col-md-5">
         <div class="media-stack">
