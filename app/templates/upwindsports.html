@@ -1,29 +1,107 @@
 {% extends "base.html" %}
 {% block title %}Upwind Sports{% endblock %}
 {% block content %}
-<div class="container py-4">
+<style>
+  :root{
+    --bg:#edf2f7;
+    --panel:#0f2238;
+    --panel-text:#e6eef8;
+    --panel-stroke:rgba(255,255,255,.14);
+    --page-max:1100px;
+  }
+
+  body{ background: var(--bg) !important; }
+
+  .page-wrap{ max-width:var(--page-max); margin:0 auto; padding:16px; }
+  .card-dark{
+    background:var(--panel);
+    color:var(--panel-text);
+    border:1px solid var(--panel-stroke);
+    border-radius:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+    padding:clamp(14px,2.6vw,26px);
+  }
+
+  .page-logo{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .page-logo img{
+    height:56px;
+    width:auto;
+    display:block;
+    border-radius:6px;
+  }
+
+  .hero-media{
+    width:100%;
+    aspect-ratio:16 / 9;
+    border-radius:12px;
+    overflow:hidden;
+    background:rgba(255,255,255,.08);
+  }
+
+  .hero-media img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  .media-stack{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .content-body{ max-width: 620px; }
+
+  @media (max-width: 767px){
+    .card-dark{ padding:16px; }
+    .content-body{ max-width: 100%; }
+    .page-logo img{ height:44px; }
+  }
+</style>
+
+<div class="page-wrap">
   <div class="text-center mb-4">
-    <img src="{{ url_for('static', filename='icons/upwinds_logo.jpg') }}" alt="Upwind Sports" class="img-fluid mb-3" style="max-height: 150px;">
+    <span class="page-logo">
+      <img src="{{ url_for('static', filename='upwinds_logo.jpg') }}" alt="Upwind Sports">
+    </span>
   </div>
 
-  <div class="row justify-content-center">
-    <div class="col-lg-9">
-      <p class="fs-5">
+  <div class="card-dark">
+    <div class="row g-4 align-items-stretch">
+      <div class="col-12 col-md-5">
+        <div class="media-stack">
+          <div class="hero-media">
+            <img src="{{ url_for('static', filename='jumpin jay boo.jpeg') }}?v=2" alt="Jay on the water">
+          </div>
+          <div class="hero-media">
+            <img src="{{ url_for('static', filename='dingin.jpeg') }}" alt="Dingin on the water">
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-7">
+        <div class="content-body">
+          <p class="fs-6">
         I started Upwind Sports in 2016 to help folks enjoy windsurfing in Bermuda.
       </p>
-      <p class="fs-5">
+      <p class="fs-6">
         By 2019 we had discovered foiling, first through windsurf foiling, and soon after through wing foiling (or
         wing-dinging, as we like to call it). What began as curiosity quickly turned into an all-consuming pursuit.
         Foiling opened up a whole new range of conditions and fundamentally changed how we thought about wind, water,
         and time on the board. Being part of this shift has been an incredible adventure.
       </p>
-      <p class="fs-5">
+      <p class="fs-6">
         During quieter periods, non-windy days, and especially through the COVID years, that same curiosity found a
         new outlet: wind data and web development. Our aim was simple and practical, to give local sailors, including
         ourselves, accurate, real-time wind and tide information to help choose the right gear and make the most of
         every session.
       </p>
-      <p class="fs-5 mb-0">
+      <p class="fs-6 mb-0">
         That effort has grown into a dedicated wind-information project for Bermuda. As of January 2026 after years
         of chasing down unreliable wind data sources on the island we have installed our very own station on Pearl
         Island. Now if it doesn't work we know who to call to get it back up and running again. Built for everyone in
@@ -31,6 +109,8 @@
         <br><br>
         Jay Riihiluoma
       </p>
+        </div>
+      </div>
     </div>
   </div>
 </div>

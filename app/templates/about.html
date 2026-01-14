@@ -1,81 +1,171 @@
 {% extends "base.html" %}
-{% block title %}About the Stations{% endblock %}
+{% block title %}The Stations{% endblock %}
 {% block content %}
 <style>
-  .station-img{
-    width: 100%;
-    max-height: 220px;
-    object-fit: contain;
-    border-radius: 6px;
+  :root{
+    --bg:#edf2f7;
+    --panel:#0f2238;
+    --panel-text:#e6eef8;
+    --panel-stroke:rgba(255,255,255,.14);
+    --page-max:1100px;
+  }
+
+  body{ background: var(--bg) !important; }
+
+  .page-wrap{ max-width:var(--page-max); margin:0 auto; padding:16px; }
+  .card-dark{
+    background:var(--panel);
+    color:var(--panel-text);
+    border:1px solid var(--panel-stroke);
+    border-radius:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+    padding:clamp(14px,2.6vw,26px);
+  }
+
+  .page-title{
+    margin:0;
+    font-size:clamp(22px,2.6vw,32px);
+    font-weight:700;
+    color:var(--panel-text);
+  }
+
+  .page-logo{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .page-logo img{
+    height:46px;
+    width:auto;
+    display:block;
+    border-radius:6px;
+  }
+
+  .credit-bubble{
+    display:inline-flex;
+    align-items:center;
+    gap:12px;
+    background:var(--panel);
+    color:var(--panel-text);
+    border:1px solid var(--panel-stroke);
+    border-radius:14px;
+    padding:10px 16px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+  }
+
+  .credit-bubble span{
+    font-size:0.95rem;
+    font-weight:600;
+    letter-spacing:.01em;
+  }
+
+  @media (max-width: 640px){
+    .page-logo img{ height:38px; }
+    .credit-bubble{ padding:8px 12px; gap:10px; }
+    .credit-bubble span{ font-size:0.85rem; }
+  }
+
+  .station-stack{ display:flex; flex-direction:column; gap:16px; }
+
+  .station-media{
+    width:100%;
+    aspect-ratio:16 / 9;
+    border-radius:12px;
+    overflow:hidden;
+    background:rgba(255,255,255,.08);
+  }
+
+  .station-media img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  .station-title{
+    margin:0 0 10px;
+    font-size:clamp(18px,2.2vw,26px);
+    font-weight:700;
+  }
+
+  .station-body{ max-width: 620px; }
+
+  @media (max-width: 767px){
+    .card-dark{ padding:16px; }
+    .station-body{ max-width: 100%; }
   }
 </style>
 
-<div class="container py-4">
+<div class="page-wrap">
   <div class="text-center mb-4">
-    <h1 class="display-6 mb-2">About the Stations</h1>
+    <a class="page-logo credit-bubble" href="http://192.168.4.162:5001/upwindsports" aria-label="Upwind Sports">
+      <span>Data presented by</span>
+      <img src="{{ url_for('static', filename='upwinds_logo.jpg') }}" alt="Upwind Sports">
+    </a>
   </div>
 
-  <div class="row g-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="row g-0 align-items-stretch">
-          <div class="col-md-5 p-3">
-            <img src="{{ url_for('static', filename='pearl.jpeg') }}" alt="Pearl Island Station" class="img-fluid station-img">
+  <div class="station-stack">
+    <div class="card-dark">
+      <div class="row g-4 align-items-stretch">
+        <div class="col-12 col-md-5">
+          <div class="station-media">
+            <img src="{{ url_for('static', filename='pearl.jpeg') }}" alt="Pearl Island Station">
           </div>
-          <div class="col-md-7">
-            <div class="card-body">
-              <h2 class="display-6 mb-3">Pearl Island Station</h2>
-              <p class="fs-6">
-                Pearl Island is the ideal location for measuring the wind, with unobstructed exposure in all directions in the Great Sound, where much of Bermuda’s wind sports activity takes place. The station operates with the kind permission of the Bermuda Audubon Society.    
-              </p>
-              <p class="fs-6 mb-3">
-                The station is built around a Gill WindSonic 75 ultrasonic anemometer, a state-of-the-art sensor used in airports and marine facilities around the globe. It delivers wind-speed accuracy to within 0.5 knots and is rated for wind speeds from 0 to 145 knots.
-              </p>
-              <p class="fs-6 mb-0">
-                The data posted is based on 1 Hz measurements from the WindSonic. Wind speed is reported as a 2-minute average taken from the most recent portion of the 5-minute posting window. Gusts represent the maximum 3-second running average observed within that 5-minute window. Wind direction is vector-averaged over the same 2-minute sampling period.
-              </p>
-            </div>
+        </div>
+        <div class="col-12 col-md-7">
+          <div class="station-body">
+            <h2 class="station-title">Pearl Island Station</h2>
+            <p class="fs-6">
+              Pearl Island is the ideal location for measuring the wind, with unobstructed exposure in all directions in the Great Sound, where much of Bermuda’s wind sports activity takes place. The station operates with the kind permission of the Bermuda Audubon Society.    
+            </p>
+            <p class="fs-6 mb-3">
+              The station is built around a Gill WindSonic 75 ultrasonic anemometer, a state-of-the-art sensor used in airports and marine facilities around the globe. It delivers wind-speed accuracy to within 0.5 knots and is rated for wind speeds from 0 to 145 knots.
+            </p>
+            <p class="fs-6 mb-0">
+              The data posted is based on 1 Hz measurements from the WindSonic. Wind speed is reported as a 2-minute average taken from the most recent portion of the 5-minute posting window. Gusts represent the maximum 3-second running average observed within that 5-minute window. Wind direction is vector-averaged over the same 2-minute sampling period.
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="row g-0 align-items-stretch">
-          <div class="col-md-5 p-3">
-            <img src="{{ url_for('static', filename='icons/crescent.jpeg') }}" alt="Crescent Station" class="img-fluid station-img">
+    <div class="card-dark">
+      <div class="row g-4 align-items-stretch">
+        <div class="col-12 col-md-5">
+          <div class="station-media">
+            <img src="{{ url_for('static', filename='crescent.jpeg') }}" alt="Crescent Station">
           </div>
-          <div class="col-md-7">
-            <div class="card-body">
-              <h2 class="display-6 mb-3">Crescent Station</h2>
-              <p class="fs-6">
-                An autonomous weather station and AIS beacon, managed by Bermuda Maritime Operations Centre,
-                Department of Marine and Ports Services. It is securely affixed to a channel marker on the North
-                Channel, approximately 4 miles north of Dockyard. This location marks a critical point where the
-                channel approach follows a graceful "crescent" shaped bend, leading into a chute in the reef
-                measuring about 200 meters wide.
-              </p>
-            </div>
+        </div>
+        <div class="col-12 col-md-7">
+          <div class="station-body">
+            <h2 class="station-title">Crescent Station</h2>
+            <p class="fs-6 mb-0">
+              An autonomous weather station and AIS beacon, managed by Bermuda Maritime Operations Centre,
+              Department of Marine and Ports Services. It is securely affixed to a channel marker on the North
+              Channel, approximately 4 miles north of Dockyard. This location marks a critical point where the
+              channel approach follows a graceful "crescent" shaped bend, leading into a chute in the reef
+              measuring about 200 meters wide.
+            </p>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="row g-0 align-items-stretch">
-          <div class="col-md-5 p-3">
-            <img src="{{ url_for('static', filename='NMB.jpeg') }}" alt="NMB Station" class="img-fluid station-img">
+    <div class="card-dark">
+      <div class="row g-4 align-items-stretch">
+        <div class="col-12 col-md-5">
+          <div class="station-media">
+            <img src="{{ url_for('static', filename='NMB.jpeg') }}" alt="NMB Station">
           </div>
-          <div class="col-md-7">
-            <div class="card-body">
-              <h2 class="display-6 mb-3">NMB Station</h2>
-              <p class="fs-6">
-                National Museum Bermuda is a station run by the Bermuda Weather Service on the roof of Commissioner's
-                House at the tip of Dockyard.
-              </p>
-            </div>
+        </div>
+        <div class="col-12 col-md-7">
+          <div class="station-body">
+            <h2 class="station-title">NMB Station</h2>
+            <p class="fs-6 mb-0">
+              National Museum Bermuda is a station run by the Bermuda Weather Service on the roof of Commissioner's
+              House at the tip of Dockyard.
+            </p>
           </div>
         </div>
       </div>
