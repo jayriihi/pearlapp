@@ -393,12 +393,19 @@ h1::after{
 .meta{ opacity:.9; font-size:.95rem; display:flex; gap:10px; align-items:center; }
 .badge{ padding:2px 8px; border-radius:999px; font-size:.75rem; border:1px solid var(--aqua); color:var(--aqua); }
 
-/* --- Stat row: 4-up desktop, single-row swipe on mobile --- */
+/* --- Stat row: 3-up desktop, stacked on mobile --- */
 .stat-grid{
   display: grid;
-  grid-template-columns: repeat(4, 1fr);  /* always 4 across */
-  gap: 10px;                               /* tighter gap */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
   margin-top: 12px;
+}
+
+@media (max-width: 640px){
+  .stat-grid{ grid-template-columns: repeat(3, 1fr); }
+  .stat{ padding: 7px 8px; }
+  .stat .label{ font-size: .7rem; }
+  .stat .value{ font-size: .85rem; line-height: 1.1; }
 }
 
 .stat{
@@ -475,20 +482,6 @@ h1::after{
     align-items: flex-start;
     gap: 4px;
   }
-}
-
-/* Last-resort fallback: horizontal scroll only on very narrow devices */
-@media (max-width: 340px){
-  .stat-grid{
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;                       /* enable swipe only here */
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
-    scroll-snap-type: x proximity;
-  }
-  .stat{ flex: 0 0 160px; scroll-snap-align: start; }
-  .stat .value{ font-size: 0.98rem; }
 }
 
 
@@ -645,19 +638,20 @@ body  { background: var(--bg) !important; }
 }
 
 .stat .value{
-  font-size: 1.1rem;           /* main numbers */
-  line-height: 1.1;
+  font-size: 0.95rem;
+  line-height: 1.2;
 }
 
-/* Cur / Avg text inside the value */
-.stat .value .stat-cur,
-.stat .value .stat-avg{
-  font-size: 0.95em;           /* a touch smaller than the card’s main size */
+.stat .value.value-lines{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 @media (max-width: 640px){
   .stat .value{
-    font-size: .9rem;
+    font-size: 0.82rem;
   }
 }
 
@@ -707,30 +701,27 @@ body  { background: var(--bg) !important; }
     </div>
 
  <div class="stat-grid">
-  <!-- Wind card -->
-<div class="stat">
-  <div class="label">Avg</div>
-  <div class="value">
-    {{ (past_hour_avg_wind_spd|round(1)) if wind_available and past_hour_avg_wind_spd is not none else '—' }} kt
-  </div>
-</div>
-
-      <div class="stat stat--compact">
-        <div class="label">Max/Min</div>
-        <div class="value mm-split">
-          <span>{{ (past_hour_avg_wind_max|round(1)) if wind_available and past_hour_avg_wind_max is not none else '—' }} kt</span>
-          <span>{{ (past_hour_avg_wind_min|round(1)) if wind_available and past_hour_avg_wind_min is not none else '—' }} kt</span>
+      <div class="stat">
+        <div class="label">Spd - kts</div>
+        <div class="value value-lines">
+          <div>Cur {{ (cur_wind_spd|round(1)) if wind_available and cur_wind_spd is not none else '—' }}</div>
+          <div>Avg {{ (past_hour_avg_wind_spd|round(1)) if wind_available and past_hour_avg_wind_spd is not none else '—' }}</div>
         </div>
       </div>
-      <div class="stat"><div class="label">Latest</div><div class="value">{{ (cur_wind_spd|round(1)) if wind_available and cur_wind_spd is not none else '—' }} kt</div></div>
-  <!-- Dir card -->
-<div class="stat">
-  <div class="label">Dir</div>
-  <div class="value stat-split">
-    <span class="stat-cur">{% if wind_available and cur_wind_dir is not none %}Cur {{ cur_wind_dir|round(0) }}°{% else %}Cur —{% endif %}</span>
-    <span class="stat-avg">{% if wind_available and avg_wind_dir is not none %}Avg {{ avg_wind_dir|round(0) }}°{% else %}Avg —{% endif %}</span>
-  </div>
-</div>
+      <div class="stat">
+        <div class="label">Spd - kts</div>
+        <div class="value value-lines">
+          <div>Max {{ (past_hour_avg_wind_max|round(1)) if wind_available and past_hour_avg_wind_max is not none else '—' }}</div>
+          <div>Min {{ (past_hour_avg_wind_min|round(1)) if wind_available and past_hour_avg_wind_min is not none else '—' }}</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="label">Dir</div>
+        <div class="value value-lines">
+          <div>Cur {{ (cur_wind_dir|round(0)|int) if wind_available and cur_wind_dir is not none else '—' }}°</div>
+          <div>Avg {{ (avg_wind_dir|round(0)|int) if wind_available and avg_wind_dir is not none else '—' }}°</div>
+        </div>
+      </div>
 
     </div>
 
