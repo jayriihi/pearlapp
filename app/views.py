@@ -1,11 +1,21 @@
+import os
 import requests
 from datetime import datetime, timedelta
-from flask import render_template, request, session, jsonify, redirect, url_for
+from flask import render_template, request, session, jsonify, redirect, url_for, send_from_directory
 from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
 from app.modules.wind_data_functionsc import NoWindDataError
 from app.modules.tide_now import NoTideDataError
 from app.modules.logging_utils import log
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "icons"),
+        "favicon.ico",
+        mimetype="image/vnd.microsoft.icon",
+    )
 
 
 # ------------------------
