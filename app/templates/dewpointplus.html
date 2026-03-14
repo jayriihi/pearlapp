@@ -40,6 +40,13 @@ Bermuda Dew Point 3-Day Forecast
       /* Reduce padding */
     }
 
+    .dew-point-table tr.band-75-80 > td { background-color: rgba(139, 0, 0, 0.8); color: #fff; }
+    .dew-point-table tr.band-70-74 > td { background-color: rgba(255, 0, 0, 0.56); color: #111; }
+    .dew-point-table tr.band-65-69 > td { background-color: rgba(255, 165, 0, 0.5); color: #111; }
+    .dew-point-table tr.band-60-64 > td { background-color: rgba(255, 255, 0, 0.46); color: #111; }
+    .dew-point-table tr.band-55-59 > td { background-color: rgba(0, 128, 0, 0.5); color: #fff; }
+    .dew-point-table tr.band-50-54 > td { background-color: rgba(0, 0, 255, 0.42); color: #fff; }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
       .dew-point-table {
@@ -73,27 +80,27 @@ Bermuda Dew Point 3-Day Forecast
           <td>80+</td>
           <td>Stay indoors with the AC on!!</td>
         </tr>
-        <tr style="background-color: darkred; color: white;">
+        <tr class="band-75-80">
           <td>75–80</td>
           <td>Extremely uncomfortable</td>
         </tr>
-        <tr style="background-color: red; color: black;">
+        <tr class="band-70-74">
           <td>70–74</td>
           <td>Very uncomfortable</td>
         </tr>
-        <tr style="background-color: orange; color: black;">
+        <tr class="band-65-69">
           <td>65–69</td>
           <td>Moderately uncomfortable</td>
         </tr>
-        <tr style="background-color: yellow; color: black;">
+        <tr class="band-60-64">
           <td>60–64</td>
           <td>Slightly uncomfortable</td>
         </tr>
-        <tr style="background-color: green; color: white;">
+        <tr class="band-55-59">
           <td>55–59</td>
           <td>Comfortable</td>
         </tr>
-        <tr style="background-color: blue; color: white;">
+        <tr class="band-50-54">
           <td>50–54</td>
           <td>Very comfortable</td>
         </tr>
