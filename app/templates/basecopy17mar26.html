@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,6 +18,7 @@
 
     <meta name="apple-mobile-web-app-title" content="Live winds">
 
+    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-BTFXTC61KN"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -26,27 +28,29 @@
     </script>
 
     <style>
+      /* Compact top navbar */
       .navbar{
-        padding-top: .25rem;
+        padding-top: .25rem;         /* default is .5rem */
         padding-bottom: .25rem;
-        min-height: 44px;
+        min-height: 44px;            /* keep touch target comfy */
       }
       .navbar-brand{ margin-right: .5rem; }
       .navbar-brand img{
-        height: 40px;
+        height: 40px;                /* shrink logo */
         width: auto;
         display: block;
       }
       .navbar-nav .nav-link{
-        padding: .25rem .6rem;
+        padding: .25rem .6rem;       /* slimmer links */
         line-height: 1.2;
-        font-size: 1.5rem;
+        font-size: 1.5rem;          /* instead of wrapping in <h2> */
       }
       .navbar-toggler{
         padding: .2rem .4rem;
         font-size: 1rem;
       }
 
+      /* Phone tweaks */
       @media (max-width: 430px){
         .navbar{ padding-top: 2px; padding-bottom: 2px; }
         .navbar-brand img{ height: 36px; }
@@ -66,35 +70,35 @@
         }
       }
 
+          /* slimmer top bar + smaller logo */
       .topbar { padding-block: 2px; }
-      .brand-img {
-        height: 24px;
-        display:block;
-        border-radius: 6px;
-        border: 1px solid rgba(96, 96, 96, .45);
-      }
+      .brand-img { height: 24px; display:block; border-radius: 6px; border: 1px solid rgba(96, 96, 96, .45); }
 
-      @media (min-width: 992px){
-        .navbar-nav.gap-lg-3 { gap: .9rem !important; }
-      }
+      @media (min-width: 992px){ .navbar-nav.gap-lg-3 { gap: .9rem !important; } }
+
     </style>
   </head>
 
   <body>
+
     <nav class="navbar navbar-expand-lg navbar-light bg-light topbar">
       <div class="container">
+        <!-- Toggler -->
         <button class="navbar-toggler ms-auto" type="button"
                 data-bs-toggle="collapse" data-bs-target="#mainNav"
                 aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
 
+        <!-- Centered: brand + menu as one group -->
         <div class="collapse navbar-collapse justify-content-center" id="mainNav">
           <div class="nav-set d-flex align-items-center gap-3 mx-auto">
+            <!-- logo sits just to the left of the items -->
             <a class="navbar-brand p-0" href="{{ url_for('upwindsports') }}">
               <img src="{{ url_for('static', filename='upwinds_logo.jpg') }}" alt="Upwind Sports" class="brand-img">
             </a>
 
+            <!-- menu -->
             <ul class="navbar-nav flex-column flex-lg-row align-items-center gap-lg-3">
               <li class="nav-item"><a class="nav-link" href="/">Past hour</a></li>
               <li class="nav-item"><a class="nav-link" href="/windput">Session</a></li>
@@ -109,45 +113,29 @@
       </div>
     </nav>
 
-    {% block content %}{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const nav = document.getElementById('mainNav');
-        if (!nav) return;
 
-        nav.querySelectorAll('.nav-link').forEach(a => {
-          a.addEventListener('click', () => {
-            const inst = bootstrap.Collapse.getOrCreateInstance(nav, { toggle: false });
-            inst.hide();
+        <h1>{% block content %}
+
+
+          {% endblock %} </h1>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+          // Optional: auto-close the mobile menu when a link is tapped
+          document.addEventListener('DOMContentLoaded', () => {
+            const nav = document.getElementById('mainNav');
+            if (!nav) return;
+            nav.querySelectorAll('.nav-link').forEach(a => {
+              a.addEventListener('click', () => {
+                const inst = bootstrap.Collapse.getOrCreateInstance(nav, { toggle: false });
+                inst.hide();
+              });
+            });
           });
-        });
-      });
+        </script>
 
-      window.addEventListener('pageshow', () => {
-        setTimeout(() => {
-          const bodyText = document.body.innerText.trim();
-          if (bodyText.length < 20 && !sessionStorage.getItem('pearl_reload_once')) {
-            console.warn('Blank screen detected, forcing reload');
-            sessionStorage.setItem('pearl_reload_once', '1');
-            location.reload();
-          }
-        }, 1200);
-      });
-
-      window.addEventListener('load', () => {
-        sessionStorage.removeItem('pearl_reload_once');
-      });
-
-      window.addEventListener('error', (e) => {
-        console.error('Global JS error:', e.message, e.filename, e.lineno);
-      });
-
-      window.addEventListener('unhandledrejection', (e) => {
-        console.error('Unhandled promise rejection:', e.reason);
-      });
-    </script>
-  </body>
+    </body>
 </html>
