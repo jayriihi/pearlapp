@@ -1,6 +1,7 @@
 import os
+import hmac
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import render_template, request, session, jsonify, redirect, url_for, send_from_directory
 from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
@@ -46,6 +47,70 @@ def _fmt_hhmm(x):
 
 def _has_session_values(*keys):
     return all(session.get(key) for key in keys)
+
+
+API_CLIENT_ENV_VARS = {
+    "sailflow": "SAILFLOW_API_KEY",
+    "bws": "BWS_API_KEY",
+}
+
+
+def _client_ip():
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    return request.remote_addr or "unknown"
+
+
+def _forbidden_api_response(client, reason):
+    log(f"[api_auth] denied client={client!r} ip={_client_ip()} reason={reason}")
+    return jsonify({"error": "forbidden"}), 403
+
+
+def _format_api_timestamp(dt_value):
+    dt_value = _as_dt(dt_value)
+    if dt_value is None:
+        return None
+
+    if dt_value.tzinfo is None:
+        dt_value = wind_data_functionsc.bda_tz.localize(dt_value)
+
+    dt_utc = dt_value.astimezone(timezone.utc).replace(second=0, microsecond=0)
+    return dt_utc.strftime("%Y-%m-%dT%H:%MZ")
+
+
+def _latest_pearl_payload():
+    station_key = "pearl"
+    _, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(
+        1,
+        station_key=station_key,
+    )
+    if not values:
+        raise NoWindDataError("No wind data available for the requested period")
+
+    start, end = wind_data_functionsc.get_window_strings(1)
+    df = wind_data_functionsc.fetch_sheet_window_df(
+        start,
+        end,
+        sheet_name=wind_data_functionsc.get_station_sheet(station_key),
+    ).sort_index()
+
+    if df.empty:
+        raise NoWindDataError("No wind data available for the requested period")
+
+    latest_timestamp = df.index.max()
+    latest_timestamp = _format_api_timestamp(latest_timestamp)
+
+    return {
+        "station": "pearl",
+        "timestamp": latest_timestamp,
+        "wind_avg_kts": round(float(avg), 1) if avg is not None else None,
+        "wind_gust_kts": round(float(maxv), 1) if maxv is not None else None,
+        "wind_min_kts": round(float(minv), 1) if minv is not None else None,
+        "wind_dir_deg": int(round(cur_dir if cur_dir is not None else avg_dir)) if (cur_dir is not None or avg_dir is not None) else None,
+        "wind_current_kts": round(float(cur_spd), 1) if cur_spd is not None else None,
+        "status": "ok",
+    }
 
 
 def get_tide_snapshot():
@@ -166,6 +231,29 @@ def fetch_winds(hours: int, station_key=None):
 def homepage():
     # unified wind/tide view, default 1 hour
     return redirect("/winds/1")
+
+
+@app.route("/api/pearl/latest")
+def api_pearl_latest():
+    client = (request.args.get("client") or "").strip().lower()
+    token = request.args.get("token") or ""
+
+    env_var_name = API_CLIENT_ENV_VARS.get(client)
+    if env_var_name is None:
+        return _forbidden_api_response(client, "unknown_client")
+
+    expected_token = os.getenv(env_var_name, "")
+    if not token or not expected_token or not hmac.compare_digest(token, expected_token):
+        return _forbidden_api_response(client, "bad_token")
+
+    try:
+        return jsonify(_latest_pearl_payload())
+    except NoWindDataError as e:
+        log(f"[api_pearl_latest] unavailable client={client!r} ip={_client_ip()} error={e}")
+        return jsonify({"error": "data_unavailable", "status": "unavailable"}), 503
+    except Exception as e:
+        log(f"[api_pearl_latest] unexpected client={client!r} ip={_client_ip()} error={e}")
+        return jsonify({"error": "internal_error", "status": "error"}), 500
 
 
 @app.route("/winds/<int:hours>")
