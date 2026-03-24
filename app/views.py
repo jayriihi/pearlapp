@@ -8,6 +8,8 @@ from app.modules.wind_data_functionsc import NoWindDataError
 from app.modules.tide_now import NoTideDataError
 from app.modules.logging_utils import log
 
+OPENWEATHER_TIMEOUT = 10
+
 
 @app.route("/favicon.ico")
 def favicon():
@@ -40,6 +42,10 @@ def _fmt_hhmm(x):
         return x.strftime("%H:%M")
     except Exception:
         return "–"
+
+
+def _has_session_values(*keys):
+    return all(session.get(key) for key in keys)
 
 
 def get_tide_snapshot():
@@ -326,6 +332,12 @@ def _parse_dt(s):
 
 @app.route("/windput", methods=["POST", "GET"])
 def windput():
+    pearl_station_key = wind_data_functionsc.DEFAULT_STATION_KEY
+    stations = [
+        {"key": key, "label": meta["label"]}
+        for key, meta in wind_data_functionsc.STATIONS.items()
+    ]
+
     if request.method == "POST":
         dt_raw = request.form.get("sessiondatetime", "").strip()
         dt = _parse_dt(dt_raw)
@@ -343,50 +355,60 @@ def windput():
         m = max(0, min(59, m))
         session["duration"] = f"{h}:{m:02d}"
         session["duration_minutes"] = h * 60 + m
-        station_key = wind_data_functionsc.resolve_station_key(
+        session["station_key"] = wind_data_functionsc.resolve_station_key(
             request.form.get("station")
         )
-        session["station_key"] = station_key
 
         return wind()
 
-    station_key = wind_data_functionsc.DEFAULT_STATION_KEY
-    stations = [
-        {"key": key, "label": meta["label"]}
-        for key, meta in wind_data_functionsc.STATIONS.items()
-    ]
     return render_template(
         "windput.html",
-        station_key=station_key,
+        station_key=pearl_station_key,
         stations=stations,
     )
 
 
 @app.route("/wind")
 def wind():
+    if not _has_session_values("sessiondatetime", "duration"):
+        return redirect(url_for("windput"))
+
     station_key = wind_data_functionsc.resolve_station_key(
         session.get("station_key")
     )
     station_label = wind_data_functionsc.STATIONS[station_key]["label"]
 
-    (
-        string_start_time,
-        string_end_time,
-        h,
-        m,
-        sesh_start_date_str,
-        sesh_start_time_str,
-        avg_wind_spd,
-        wind_max,
-        wind_min,
-        avg_wind_dir,
-        date_time_index_series_str,
-        wind_spd_series,
-    ) = wind_data_functionsc.get_sesh_wind(
-        session["sessiondatetime"],
-        session["duration"],
-        station_key=session.get("station_key"),
-    )
+    try:
+        (
+            string_start_time,
+            string_end_time,
+            h,
+            m,
+            sesh_start_date_str,
+            sesh_start_time_str,
+            avg_wind_spd,
+            wind_max,
+            wind_min,
+            avg_wind_dir,
+            date_time_index_series_str,
+            wind_spd_series,
+        ) = wind_data_functionsc.get_sesh_wind(
+            session["sessiondatetime"],
+            session["duration"],
+            station_key=session.get("station_key"),
+        )
+    except Exception as e:
+        log(f"[wind] session wind fetch failed: {e}")
+        return render_template(
+            "session_error.html",
+            message="Session wind data is temporarily unavailable.",
+        ), 503
+
+    if any(value is None for value in (avg_wind_spd, wind_max, wind_min, avg_wind_dir)):
+        return render_template(
+            "session_error.html",
+            message="No session data found for the selected range.",
+        ), 404
 
     # Round and convert to integers for display
     avg_wind_spd = round(avg_wind_spd, 1)
@@ -394,16 +416,25 @@ def wind():
     wind_min = int(round(wind_min, 0))
     avg_wind_dir = int(round(avg_wind_dir, 0))
 
-    (
-        flow_state_beg,
-        flow_state_end,
-        prev_peak_time,
-        prev_peak_state,
-        next_peak_time,
-        next_peak_state,
-    ) = sesh_tide.get_tide_data_for_session(
-        session["sessiondatetime"], session["duration"]
-    )
+    try:
+        (
+            flow_state_beg,
+            flow_state_end,
+            prev_peak_time,
+            prev_peak_state,
+            next_peak_time,
+            next_peak_state,
+        ) = sesh_tide.get_tide_data_for_session(
+            session["sessiondatetime"], session["duration"]
+        )
+    except Exception as e:
+        log(f"[wind] session tide fetch failed: {e}")
+        flow_state_beg = "Slack"
+        flow_state_end = "Slack"
+        prev_peak_time = None
+        prev_peak_state = None
+        next_peak_time = None
+        next_peak_state = None
 
     return render_template(
         "sesh_wind.html",
@@ -475,62 +506,6 @@ def upwindsports():
     return render_template("upwindsports.html")
 
 
-@app.route("/error")
-def error():
-    return render_template("error.html")
-
-
-@app.route("/error_2")
-def error_2():
-    # Fetch modeled data from pred_cres
-    (
-        avg_wind_spd,
-        wind_max,
-        wind_min,
-        avg_wind_dir,
-        date_time_index_series_str,
-        wind_spd_series,
-    ) = wind_data_functionsc.fetch_pred_cres_data()
-
-    # Round and convert to integers for display
-    avg_wind_spd = round(avg_wind_spd, 1)
-    wind_max = int(round(wind_max, 0))
-    wind_min = int(round(wind_min, 0))
-    avg_wind_dir = int(round(avg_wind_dir, 0))
-
-    # Fetch tide data
-    (
-        flow_state_beg,
-        prev_peak_time,
-        prev_peak_state,
-        prev_peak_ht,
-        next_peak_time,
-        next_peak_state,
-        next_peak_ht,
-    ) = tide_now.get_tide_data_for_now()
-
-    tide_state_full = "Low" if next_peak_state == "L" else "High"
-    next_peak_time_formatted = _fmt_hhmm(next_peak_time)
-
-    return render_template(
-        "error_2.html",
-        labels=date_time_index_series_str,
-        values=wind_spd_series,
-        past_hour_avg_wind_spd=avg_wind_spd,
-        past_hour_avg_wind_min=wind_min,
-        past_hour_avg_wind_max=wind_max,
-        avg_wind_dir=avg_wind_dir,
-        flow_state_beg=flow_state_beg,
-        prev_peak_time=prev_peak_time,
-        prev_peak_state=prev_peak_state,
-        prev_peak_ht=prev_peak_ht,
-        next_peak_time=next_peak_time_formatted,
-        next_peak_state=tide_state_full,
-        next_peak_ht=next_peak_ht,
-        is_modeled=True,
-    )
-
-
 @app.route("/tide")
 def tide_home():
     return render_template("chart.html")
@@ -590,6 +565,9 @@ def dual_tide_plot():
     station_id = 2695540
     start_date = datetime.now()
     end_date = datetime.now() + timedelta(days=2)
+    buffer = timedelta(hours=1)
+    buffered_start = start_date - buffer
+    buffered_end = end_date + buffer
     fixedMaxY = 0.35
 
     (
@@ -600,7 +578,7 @@ def dual_tide_plot():
         thresholds_json,
         max_slope_json,
     ) = tidal_data_retrieval.get_dual_tide_plot_json(
-        station_id, start_date, end_date, fixedMaxY
+        station_id, buffered_start, buffered_end, start_date, end_date, fixedMaxY
     )
 
     return render_template(
@@ -653,7 +631,11 @@ def tidal_flow():
 
 @app.route("/dewpointplus")
 def dewpoint():
-    api_key = "d6972ca477a08858bd2dbcb4bce19c55"  # Use your real API key
+    api_key = os.environ.get("OPENWEATHER_API_KEY")
+    if not api_key:
+        log("[dewpointplus] OPENWEATHER_API_KEY is not set")
+        return "Dew point data temporarily unavailable.", 503
+
     lat, lon = "32.3078", "-64.7505"
     url = (
         "https://api.openweathermap.org/data/3.0/onecall"
@@ -661,8 +643,9 @@ def dewpoint():
         "&exclude=minutely,daily,alerts"
         f"&appid={api_key}&units=imperial"
     )
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, timeout=OPENWEATHER_TIMEOUT)
+        response.raise_for_status()
         data = response.json()
         hourly_forecasts = [
             {
@@ -671,13 +654,15 @@ def dewpoint():
                 "temp": hour.get("temp"),
                 "humidity": hour.get("humidity"),
             }
-            for hour in data["hourly"][:72]
+            for hour in data.get("hourly", [])[:72]
+            if "dt" in hour and "dew_point" in hour
         ]
+    except (requests.RequestException, ValueError, TypeError, KeyError) as e:
+        log(f"[dewpointplus] failed to retrieve forecast: {e}")
+        return "Dew point data temporarily unavailable.", 503
 
-        return render_template("dewpointplus.html", forecasts=hourly_forecasts)
-    else:
-        log(f"Failed to retrieve data with status code {response.status_code}")
-        return (
-            f"Failed to retrieve data with status code {response.status_code}",
-            400,
-        )
+    if not hourly_forecasts:
+        log("[dewpointplus] no hourly forecast data returned")
+        return "Dew point data temporarily unavailable.", 503
+
+    return render_template("dewpointplus.html", forecasts=hourly_forecasts)

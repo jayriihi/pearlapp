@@ -3,6 +3,7 @@ import pandas as pd
 import datetime as dt
 from datetime import timedelta, datetime
 from zoneinfo import ZoneInfo
+from app.modules.logging_utils import log
 
 
 class NoTideDataError(Exception):
@@ -11,6 +12,25 @@ class NoTideDataError(Exception):
 
 
 BERMUDA_TZ = ZoneInfo("Atlantic/Bermuda")
+REQUEST_TIMEOUT = 10
+
+
+def _fetch_noaa_predictions(noaa_api_url):
+    try:
+        response = requests.get(noaa_api_url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        log(f"[tide_now] NOAA request failed: {e}")
+        raise NoTideDataError("No tide data available for the requested period") from e
+    except ValueError as e:
+        log(f"[tide_now] NOAA JSON decode failed: {e}")
+        raise NoTideDataError("No tide data available for the requested period") from e
+
+    predictions = data.get("predictions")
+    if not predictions:
+        raise NoTideDataError("No tide data available for the requested period")
+    return predictions
 
 
 def format_date_time():
@@ -60,12 +80,7 @@ def get_tide_data_for_now():
     # to get data from NOAA website using their API using input date
     noaa_api_url = (("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=NOS.COOPS.TAC.WL&begin_date={}&end_date={}&datum=MLLW&station=2695540&time_zone=lst_ldt&units=english&interval=hilo&format=json").format(prior_date_str,next_date_str))
     #print(noaa_api_url)
-    day_tide = requests.get(noaa_api_url)
-
-    # to view json file
-    day_table = day_tide.json()
-    #create days table as list
-    day_table_pred = day_table["predictions"]
+    day_table_pred = _fetch_noaa_predictions(noaa_api_url)
 
     #create data frame from predictions list y
     df = pd.DataFrame(day_table_pred)
@@ -185,15 +200,9 @@ def fetch_tide_predictions(current_date=None):
     )
 
     try:
-        r = requests.get(noaa_api_url)
-        r.raise_for_status()
-        data = r.json()
+        predictions = _fetch_noaa_predictions(noaa_api_url)
     except Exception as e:
         raise NoTideDataError("No tide data available for the requested period") from e
-
-    predictions = data.get("predictions")
-    if not predictions:
-        raise NoTideDataError("No tide data available for the requested period")
 
     values = []
     times = []
@@ -208,4 +217,3 @@ def fetch_tide_predictions(current_date=None):
         raise NoTideDataError("No tide data available for the requested period")
 
     return times, values
-

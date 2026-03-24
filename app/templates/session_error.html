@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Session unavailable{% endblock %}
+
+{% block content %}
+<style>
+  .page-wrap { max-width: 760px; margin: 0 auto; padding: 20px; }
+  .card-dark {
+    background: var(--panel, #0f2238);
+    color: var(--panel-text, #e6eef8);
+    border: 1px solid var(--panel-stroke, rgba(255,255,255,.14));
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    padding: 24px;
+    text-align: center;
+  }
+  .card-dark h2 { margin-bottom: 10px; }
+</style>
+
+<div class="page-wrap">
+  <div class="card-dark">
+    <h2>{{ message }}</h2>
+    <p>Please try another date or start a new session lookup.</p>
+    <a class="btn btn-primary" href="{{ url_for('windput') }}">New session</a>
+  </div>
+</div>
+{% endblock %}

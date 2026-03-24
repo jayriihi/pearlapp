@@ -10,6 +10,7 @@ from app.modules.logging_utils import log
 # Shared Google Sheet config
 GSHEET_ID = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
 NUM_ROWS = 2016
+SESSION_NUM_ROWS = NUM_ROWS * 4
 # Pearl tab gid copied from sheet URL (?gid=1815185817)
 SHEET_GIDS = {"Pearl": 1815185817}  # known gid mapping; others fall back to gviz
 
@@ -152,7 +153,7 @@ def format_date_time(datetimelocal_str, duration_str):
     return string_start_time, string_end_time, h, m, sesh_start_date_str, sesh_start_time_str
 
 
-def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_name=None):
+def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_name=None, num_rows=NUM_ROWS):
     """
     Fetch summary stats + wind speed series for a time window from the
     configured sheet. If sheet_name is given, it overrides the default station.
@@ -168,7 +169,7 @@ def fetch_pred_cres_data(string_start_time=None, string_end_time=None, sheet_nam
         string_end_time = now_bda.strftime("%Y-%m-%d %H:%M")
 
     try:
-        df = fetch_sheet_csv(sheet_name)
+        df = fetch_sheet_csv(sheet_name, num_rows=num_rows)
     except Exception as e:
         log(f"Error fetching {sheet_name} data: {e}")
         return None, None, None, None, [], []
@@ -212,6 +213,7 @@ def get_sesh_wind(datetimelocal_str, duration_str, station_key=None):
         string_start_time,
         string_end_time,
         sheet_name=sheet_name,
+        num_rows=SESSION_NUM_ROWS,
     )
 
     if any(x is None for x in [avg_wind_spd, wind_max, wind_min, avg_wind_dir]) or not series:

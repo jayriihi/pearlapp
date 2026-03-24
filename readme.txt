@@ -50,3 +50,39 @@ Git commands to pull to python anywhere from repo
 git fetch
 git checkout main
 git pull
+
+-----------------------------
+production_deployment
+------------------------------
+
+Local environment variables needed before production-like testing:
+
+- APP_ENV=development
+- SECRET_KEY
+- OPENWEATHER_API_KEY
+- MAINT_BYPASS_KEY (optional)
+- SESSION_COOKIE_SECURE=1 for HTTPS deployments
+
+Local run command:
+
+FLASK_DEBUG=1 python3 run.py
+
+PythonAnywhere notes:
+
+- The app object to import is: from app import app as application
+- This repo includes /Users/jayriihiluoma/Documents/pearlapp/wsgi.py as a helper import target.
+- The live PythonAnywhere WSGI file is the separate file configured in the Web tab under /var/www/.
+
+PythonAnywhere checklist:
+
+1. Create a virtualenv with the Python version used by your web app.
+2. Install dependencies from requirements.txt.
+3. Set environment variables in the PythonAnywhere WSGI file:
+   APP_ENV=staging
+   SECRET_KEY
+   OPENWEATHER_API_KEY
+   MAINT_BYPASS_KEY (optional)
+   SESSION_COOKIE_SECURE=1
+4. Add the repo path to sys.path in the PythonAnywhere WSGI file.
+5. Import the Flask app as application.
+6. Reload the web app from the PythonAnywhere Web tab.

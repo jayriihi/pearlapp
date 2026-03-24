@@ -7,6 +7,8 @@ import numpy as np
 import pytz
 from app.modules.logging_utils import log
 
+REQUEST_TIMEOUT = 10
+
 class NoTideDataError(Exception):
     """Raised when tide data cannot be retrieved or is unusable."""
     pass
@@ -47,8 +49,12 @@ def fetch_hilo_tide_predictions(station_id, start_date, end_date):
         "time_zone": "gmt",
         "format": "json",
     }
-    response = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=params)
     try:
+        response = requests.get(
+            "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
         response.raise_for_status()
     except requests.RequestException as e:
         log(f"[tides] hi/lo request failed: {e}")
@@ -91,8 +97,12 @@ def get_detailed_tide_predictions(station_id, start_date, end_date):
         "time_zone": "gmt",
         "format": "json",
     }
-    response = requests.get("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter", params=params)
     try:
+        response = requests.get(
+            "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter",
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
         response.raise_for_status()
     except requests.RequestException as e:
         log(f"[tides] detailed request failed: {e}")

@@ -24,10 +24,10 @@ def homepage():
         res = (None, None, None, None, [], [])
     avg_wind_spd, wind_max, wind_min, avg_wind_dir, labels, series = res
 
-    # bail to error page if wind failed hard
+    # bail out if wind failed hard
     if (avg_wind_spd is None) or (not series):
-        print("Wind fetch failed after fallback. Redirecting to error_2.")
-        return redirect(url_for("error_2"))
+        print("Wind fetch failed after fallback.")
+        return redirect("/winds/1")
 
     # safe rounding
     def sround(x, nd=0):
@@ -389,67 +389,6 @@ def graph_temp():
 @app.route("/crescent")
 def crescent_descr():
     return render_template("crescent_descr.html")
-
-
-@app.route("/error")
-def error():
-    return render_template("error.html")
-
-
-@app.route("/error_2")
-def error_2():
-    # Fetch modeled data from pred_cres
-    (
-        avg_wind_spd,
-        wind_max,
-        wind_min,
-        avg_wind_dir,
-        date_time_index_series_str,
-        wind_spd_series,
-    ) = wind_data_functionsc.fetch_pred_cres_data()
-
-    # Round the values for display
-    # Round and convert to integers for display
-    avg_wind_spd = round(avg_wind_spd, 1)
-    wind_max = int(round(wind_max, 0))
-    wind_min = int(round(wind_min, 0))
-    avg_wind_dir = int(round(avg_wind_dir, 0))
-
-    # Fetch tide data
-    (
-        flow_state_beg,
-        prev_peak_time,
-        prev_peak_state,
-        prev_peak_ht,
-        next_peak_time,
-        next_peak_state,
-        next_peak_ht,
-    ) = tide_now.get_tide_data_for_now()
-
-    # Convert tide state abbreviation to full form
-    tide_state_full = "Low" if next_peak_state == "L" else "High"
-
-    # Convert Timestamp to string and then format time to show only hours and minutes
-    next_peak_time_formatted = next_peak_time.strftime("%H:%M")
-
-    # Pass the data to the error_2.html template
-    return render_template(
-        "error_2.html",
-        labels=date_time_index_series_str,
-        values=wind_spd_series,
-        past_hour_avg_wind_spd=avg_wind_spd,
-        past_hour_avg_wind_min=wind_min,
-        past_hour_avg_wind_max=wind_max,
-        avg_wind_dir=avg_wind_dir,
-        flow_state_beg=flow_state_beg,
-        prev_peak_time=prev_peak_time,
-        prev_peak_state=prev_peak_state,
-        prev_peak_ht=prev_peak_ht,
-        next_peak_time=next_peak_time_formatted,
-        next_peak_state=tide_state_full,
-        next_peak_ht=next_peak_ht,
-        is_modeled=True,  # Flag to indicate that modeled data is being displayed
-    )
 
 
 @app.route("/tide")
