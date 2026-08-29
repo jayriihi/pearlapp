@@ -52,6 +52,7 @@ def _has_session_values(*keys):
 API_CLIENT_ENV_VARS = {
     "sailflow": "SAILFLOW_API_KEY",
     "bws": "BWS_API_KEY",
+    "cameron": "CAMERON_KEY",
 }
 
 
