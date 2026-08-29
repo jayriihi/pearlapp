@@ -1,307 +1,67 @@
 {% extends "base.html" %}
-
-{% block title %}
-Bermuda Dew Point 3-Day Forecast
-{% endblock %}
-
+{% block title %}Bermuda Activity Conditions{% endblock %}
 {% block content %}
-<div class="container py-4 px-3">
-  <!-- Main Heading -->
-  <h1 style="font-size: 1.75rem; text-align: center; margin-bottom: 2rem;">
-    Bermuda Dew Point, Temperature, and Humidity 3-Day Forecast
-  </h1>
+<style>
+  .activity-page { max-width: 1080px; }
+  .activity-title { font-size: clamp(1.65rem, 4vw, 2.15rem); letter-spacing: -.02em; }
+  .conditions-card, .forecast-card, .comfort-legend { border: 1px solid rgba(33,37,41,.12); border-radius: .75rem; background: #fff; box-shadow: 0 .2rem .8rem rgba(33,37,41,.05); }
+  .conditions-card { border-width: 3px; }
+  .eyebrow { color: #6c757d; font-size: .72rem; font-weight: 700; letter-spacing: .11em; }
+  .primary-reading { font-size: clamp(2.5rem, 7vw, 4rem); font-weight: 700; letter-spacing: -.06em; line-height: .95; }
+  .condition-summary { font-size: 1.05rem; font-weight: 600; }
+  .support-reading { border-left: 1px solid rgba(33,37,41,.12); padding-left: 1rem; }
+  .support-reading strong { display: block; font-size: 1.2rem; }
+  .conditions-meta { color: #6c757d; font-size: .8rem; }
+  .chart-container { height: clamp(290px, 52vw, 410px); position: relative; }
+  .metric-controls .btn { font-size: .84rem; padding: .35rem .65rem; }
+  .comfort-legend { padding: 1rem; }
+  .legend-items { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: .45rem; }
+  .legend-item { border-radius: .4rem; font-size: .75rem; min-width: 0; padding: .35rem .45rem; }
+  .legend-item span { display: block; white-space: normal; }
+  @media (max-width: 575.98px) { .activity-page { padding-left: 1rem !important; padding-right: 1rem !important; } .conditions-card { padding: 1.1rem !important; } .support-reading { border-left: 0; border-top: 1px solid rgba(33,37,41,.12); padding: .65rem 0 0; } .legend-items { grid-template-columns: repeat(2, minmax(0,1fr)); gap: .35rem; } .legend-item { font-size: .72rem; padding: .3rem .35rem; } .forecast-card { padding: 1rem !important; } }
+</style>
 
-  <!-- Chart Section -->
-  <div class="row mb-5">
-    <div class="col-md-12">
-      <div class="chart-container" style="position: relative; height: 400px; width: 100%;">
-        <canvas id="dewPointChart"></canvas>
+<main class="container activity-page py-4 px-3 px-md-4">
+  <h1 class="activity-title mb-4">Bermuda Activity Conditions</h1>
+  {% if current_conditions %}
+    <section class="conditions-card p-3 p-md-4 mb-4" style="border-color: {{ current_conditions.comfort.color }};" aria-labelledby="conditions-heading">
+      <div class="row align-items-center g-3">
+        <div class="col-sm-5"><div id="conditions-heading" class="eyebrow mb-2">CURRENT CONDITIONS</div><div class="primary-reading">{{ current_conditions.dew_point|round|int }}°F</div><div class="eyebrow mt-1">DEW POINT</div><div class="condition-summary mt-2" style="color: {{ current_conditions.comfort.color }};">{{ current_conditions.comfort.description }}</div></div>
+        <div class="col-sm-7"><div class="row g-3"><div class="col-6 support-reading"><strong>{{ current_conditions.temperature|round|int }}°F</strong><span class="text-muted small">Temperature</span></div><div class="col-6 support-reading"><strong>{{ current_conditions.humidity|round|int }}%</strong><span class="text-muted small">Humidity</span></div></div><div class="conditions-meta mt-3">Current conditions · {{ current_conditions.source }} · Updated {{ current_conditions.updated }} Bermuda time</div></div>
       </div>
-    </div>
-  </div>
-
-  <style>
-    .dew-point-table {
-      max-width: 700px;
-      /* Reduce width for a narrower look */
-      margin: 5px auto 0 !important;
-      padding-top: 0 !important;
-    }
-
-    .dew-point-table table {
-      font-size: 0.75rem;
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .dew-point-table th,
-    .dew-point-table td {
-      padding: 2px 5px;
-      /* Reduce padding */
-    }
-
-    .dew-point-table tr.band-75-80 > td { background-color: rgba(139, 0, 0, 0.8); color: #fff; }
-    .dew-point-table tr.band-70-74 > td { background-color: rgba(255, 0, 0, 0.56); color: #111; }
-    .dew-point-table tr.band-65-69 > td { background-color: rgba(255, 165, 0, 0.5); color: #111; }
-    .dew-point-table tr.band-60-64 > td { background-color: rgba(255, 255, 0, 0.46); color: #111; }
-    .dew-point-table tr.band-55-59 > td { background-color: rgba(0, 128, 0, 0.5); color: #fff; }
-    .dew-point-table tr.band-50-54 > td { background-color: rgba(0, 0, 255, 0.42); color: #fff; }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .dew-point-table {
-        max-width: 90%;
-        /* Adjust for smaller screens */
-      }
-
-      .dew-point-table th,
-      .dew-point-table td {
-        padding: 2px 3px;
-        /* More compact */
-      }
-    }
-  </style>
-
-
-  <!-- Dew Point Explanation Table -->
-  <div class="mb-5 dew-point-table">
-    <h2 style="font-size: 1rem; margin-bottom: 0.5rem;">
-      How the dew point feels when exercising outdoors:
-    </h2>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th style="width: 30%; font-size: 0.75rem;">Dew Point Range</th>
-          <th style="width: 70%; font-size: 0.75rem;">How It Feels</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="background-color: white; color: black;">
-          <td>80+</td>
-          <td>Stay indoors with the AC on!!</td>
-        </tr>
-        <tr class="band-75-80">
-          <td>75–80</td>
-          <td>Extremely uncomfortable</td>
-        </tr>
-        <tr class="band-70-74">
-          <td>70–74</td>
-          <td>Very uncomfortable</td>
-        </tr>
-        <tr class="band-65-69">
-          <td>65–69</td>
-          <td>Moderately uncomfortable</td>
-        </tr>
-        <tr class="band-60-64">
-          <td>60–64</td>
-          <td>Slightly uncomfortable</td>
-        </tr>
-        <tr class="band-55-59">
-          <td>55–59</td>
-          <td>Comfortable</td>
-        </tr>
-        <tr class="band-50-54">
-          <td>50–54</td>
-          <td>Very comfortable</td>
-        </tr>
-        <tr style="background-color: white; color: black;">
-          <td>0–50</td>
-          <td>Won't break a sweat!!</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-
-
-  <!--<table class="table table-bordered">
-      <thead class="thead-light">
-        <tr>
-          <th style="font-size: 0.875rem;">Dew Point Range</th>
-          <th style="font-size: 0.875rem;">How It Feels</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="font-size: 0.875rem;">80+</td>
-          <td style="font-size: 0.875rem;">Stay indoors with the AC on!!</td>
-        </tr>
-        <tr class="table-danger">
-          <td style="font-size: 0.875rem;">75–80</td>
-          <td style="font-size: 0.875rem;">Extremely uncomfortable</td>
-        </tr>
-        <tr class="table-warning">
-          <td style="font-size: 0.875rem;">70–74</td>
-          <td style="font-size: 0.875rem;">Very uncomfortable</td>
-        </tr>
-        <tr class="table-info">
-          <td style="font-size: 0.875rem;">65–69</td>
-          <td style="font-size: 0.875rem;">Moderately uncomfortable</td>
-        </tr>
-        <tr class="table-success">
-          <td style="font-size: 0.875rem;">60–64</td>
-          <td style="font-size: 0.875rem;">Slightly uncomfortable</td>
-        </tr>
-        <tr>
-          <td style="font-size: 0.875rem;">55–59</td>
-          <td style="font-size: 0.875rem;">Comfortable</td>
-        </tr>
-        <tr>
-          <td style="font-size: 0.875rem;">50–54</td>
-          <td style="font-size: 0.875rem;">Very comfortable</td>
-        </tr>
-        <tr>
-          <td style="font-size: 0.875rem;">0–50</td>
-          <td style="font-size: 0.875rem;">Won't break a sweat!!</td>
-        </tr>        
-      </tbody>
-    </table> -->
-</div>
-
-<!-- External Links Section -->
-<div class="mb-5">
-  <div>
-    <div class="text-center">
-      <a class="d-flex flex-column align-items-center justify-content-center" href="https://www.alextran.org/dew-point/"
-        target="_blank" style="max-width: 300px; margin: 0 auto;">
-        <img src="/static/wordpress.png" alt="link" style="margin-bottom: 10px; height: 50px; border-radius: 50%;">
-        <span style="font-size: 0.9rem; word-wrap: break-word;">
-          Link to an interesting explanation of why dew point is a great indicator of how working outdoors will feel
-        </span>
-      </a>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Chart.js Scripts -->
+    </section>
+  {% endif %}
+  <section class="forecast-card p-3 p-md-4 mb-3" aria-labelledby="forecast-heading">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h2 id="forecast-heading" class="h4 mb-0">Three-day forecast</h2><p class="text-muted small mb-0">Hourly conditions</p></div><div class="btn-group metric-controls" role="group" aria-label="Forecast metric"><button type="button" class="btn btn-dark active" data-metric="dew">Dew Point</button><button type="button" class="btn btn-outline-secondary" data-metric="temp">Temperature</button><button type="button" class="btn btn-outline-secondary" data-metric="humidity">Humidity</button></div></div>
+    <div class="chart-container"><canvas id="dewPointChart"></canvas></div>
+  </section>
+  <section class="comfort-legend mb-4" aria-labelledby="comfort-heading"><h2 id="comfort-heading" class="h6 mb-2">Outdoor activity comfort scale</h2><div class="legend-items">{% for band in comfort_bands %}<div class="legend-item" style="background: {{ band.color }}; color: {{ band.text_color }};"><span>{{ band.range }} — {{ band.description }}</span></div>{% endfor %}</div></section>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script>
-  // Chart.js plugin for drawing background color bands
-  const colorBandsPlugin = {
-    id: 'colorBandsPlugin',
-    beforeDraw: (chart) => {
-      const ctx = chart.ctx;
-      const yAxis = chart.scales.y; // Get y-axis
-      const chartArea = chart.chartArea;
-
-      // Define the color bands
-      const bands = [
-        /*{ color: 'white', from: 0, to: 50 }*/
-        { color: 'blue', from: 50, to: 55 },
-        { color: 'green', from: 55, to: 60 },
-        { color: 'yellow', from: 60, to: 65 },
-        { color: 'orange', from: 65, to: 70 },
-        { color: 'red', from: 70, to: 75 },
-        { color: 'darkred', from: 75, to: 80 },
-        { color: 'white', from: 80, to: 100 }
-      ];
-
-      // Draw each band
-      bands.forEach(band => {
-        const topY = yAxis.getPixelForValue(band.to);
-        const bottomY = yAxis.getPixelForValue(band.from);
-        ctx.fillStyle = band.color;
-        ctx.fillRect(chartArea.left, topY, chartArea.right - chartArea.left, bottomY - topY);
-      });
-    }
-  };
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const ctx = document.getElementById('dewPointChart').getContext('2d');
-
-    // Get forecast data passed from Flask
-    const forecasts = {{ forecasts | tojson | safe
-  }};
-  const labels = forecasts.map(forecast => forecast.time);
-  const dewPoints = forecasts.map(forecast => forecast.dew_point);
-  const temperatures = forecasts.map(forecast => forecast.temp);
-  const humidities = forecasts.map(forecast => forecast.humidity);
-
-  const myChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Dew Point (°F)',
-          data: dewPoints,
-          borderColor: 'rgba(0, 0, 0, 0.7)',
-          pointBackgroundColor: 'black', // Change this to the desired interior color
-          pointBorderColor: 'black', // Ensure border color matches or contrasts
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,         // Reduce plot point size
-          pointHoverRadius: 4,    // Reduce hover effect size
-          pointBorderWidth: 1,    // Adjust border width for visibility
-          pointHitRadius: 5       // Ensure hover detection still works well
-        }
-        ,
-        {
-          label: 'Temperature (°F)',
-          data: temperatures,
-          borderColor: 'aqua',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,         // Reduce plot point size
-          pointHoverRadius: 4,    // Reduce hover effect size
-          pointBorderWidth: 1,    // Adjust border width for visibility
-          pointHitRadius: 5       // Ensure hover detection still works well
-        },
-        {
-          label: 'Relative Humidity (%)',
-          data: humidities,
-          borderColor: 'rgba(30, 144, 255, 1)',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 2,         // Reduce plot point size
-          pointHoverRadius: 4,    // Reduce hover effect size
-          pointBorderWidth: 1,    // Adjust border width for visibility
-          pointHitRadius: 5       // Ensure hover detection still works well
-        }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          type: 'time',
-          time: {
-            parser: 'yyyy-MM-dd HH:mm',
-            unit: 'hour',
-            displayFormats: {
-              hour: 'MMM d HH:mm'
-            }
-          },
-          title: {
-            display: true,
-            text: 'Time of Day',
-            font: { size: 20 }
-          }
-        },
-        y: {
-          beginAtZero: false,
-          min: 50,
-          max: 100,
-          ticks: { stepSize: 5 },
-          title: {
-            display: true,
-            text: 'Values',
-            font: { size: 20 }
-          }
-        }
-      },
-      plugins: {
-        legend: { labels: { font: { size: 18 } } },
-        tooltip: {
-          bodyFont: { size: 18 },
-          titleFont: { size: 18 }
-        }
-      }
-    },
-    plugins: [colorBandsPlugin]
-  });
+  const comfortBands = {{ comfort_bands | tojson }};
+  const comfortBandsPlugin = { id: 'comfortBands', beforeDraw(chart) { if (chart.$metric !== 'dew') return; const {ctx, chartArea, scales:{y}} = chart; if (!chartArea || !y) return; comfortBands.forEach(band => { const from=Math.max(45, band.minimum), to=Math.min(85, band.maximum === null ? 85 : band.maximum); if (to <= from) return; ctx.fillStyle=band.chart_color || band.color; ctx.fillRect(chartArea.left,y.getPixelForValue(to),chartArea.right-chartArea.left,y.getPixelForValue(from)-y.getPixelForValue(to)); }); } };
+  document.addEventListener('DOMContentLoaded', () => {
+    const forecasts = {{ forecasts | tojson }};
+    const labels = forecasts.map(item => item.time), values = {dew: forecasts.map(item => item.dew_point), temp: forecasts.map(item => item.temp), humidity: forecasts.map(item => item.humidity)};
+    const configs = {dew:{label:'Dew Point (°F)',tooltipLabel:'Dew Point',unit:'°F',color:'#1f2933',title:'Dew point (°F)'},temp:{label:'Temperature (°F)',tooltipLabel:'Temperature',unit:'°F',color:'#b45309',title:'Temperature (°F)'},humidity:{label:'Relative Humidity (%)',tooltipLabel:'Humidity',unit:'%',color:'#2563a8',title:'Relative humidity (%)'}};
+    const hourAt = index => Number(labels[index].slice(-5,-3));
+    function tickLabel(value,index) { const [date,time]=labels[index].split(' '), [year,month,day]=date.split('-').map(Number), hour=Number(time.slice(0,2)), interval=this.chart.width < 520 ? 12 : 6; if(hour % interval && index !== 0) return ''; const dateValue=new Date(year,month-1,day,hour), dayName=dateValue.toLocaleDateString('en-US',{weekday:'short'}), hourLabel=dateValue.toLocaleTimeString('en-US',{hour:'numeric'}); return hour===0 || index===0 ? [dayName,hourLabel] : hourLabel; }
+    const formatForecastTime = index => { const [date,time]=labels[index].split(' '), [year,month,day]=date.split('-').map(Number), [hour,minute]=time.split(':').map(Number), value=new Date(year,month-1,day,hour,minute); return `${value.toLocaleDateString('en-US',{weekday:'short'})} ${value.toLocaleTimeString('en-US',{hour:'numeric'})}`; };
+    const chart = new Chart(document.getElementById('dewPointChart'), {type:'line',data:{labels,datasets:[{data:values.dew,label:configs.dew.label,borderColor:configs.dew.color,borderWidth:2.5,tension:.28,pointRadius:0,pointHoverRadius:4,pointHitRadius:12}]},options:{responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},onClick(event,ignored,activeChart) { const points=activeChart.getElementsAtEventForMode(event,'nearest',{intersect:true},false), active=activeChart.tooltip.getActiveElements(); if(!points.length || active.some(point => points[0].datasetIndex === point.datasetIndex && points[0].index === point.index)) { activeChart.tooltip.setActiveElements([],{x:0,y:0}); activeChart.update(); return; } const point=points[0], position=activeChart.getDatasetMeta(point.datasetIndex).data[point.index].getProps(['x','y'],true); activeChart.tooltip.setActiveElements([point],position); activeChart.update(); },scales:{x:{grid:{color:context => hourAt(context.index) === 0 ? 'rgba(33,37,41,.24)' : hourAt(context.index) % 6 === 0 ? 'rgba(33,37,41,.10)' : 'transparent',lineWidth:context => hourAt(context.index) === 0 ? 1.25 : 1},ticks:{autoSkip:false,maxRotation:0,font:{size:11},callback:tickLabel}},y:{min:45,max:85,ticks:{stepSize:5},title:{display:true,text:configs.dew.title},grid:{color:'rgba(33,37,41,.10)'}}},plugins:{legend:{display:false},tooltip:{callbacks:{title:items => formatForecastTime(items[0].dataIndex),label:item => { const config=configs[chart.$metric]; return `${config.tooltipLabel}: ${Number(item.parsed.y).toFixed(1)}${config.unit}`; }}}}},plugins:[comfortBandsPlugin]});
+    chart.$metric='dew'; chart.update();
+    // Chart.js only receives events on its canvas. This explicit document-level
+    // pointer handler clears a touch-pinned tooltip when the user taps elsewhere.
+    const dismissActiveTooltip = () => {
+      chart.setActiveElements([]);
+      chart.tooltip.setActiveElements([], {x: 0, y: 0});
+      chart.update('none');
+    };
+    const dismissOutsideChart = event => {
+      if (!chart.canvas.contains(event.target)) dismissActiveTooltip();
+    };
+    document.addEventListener('pointerdown', dismissOutsideChart, true);
+    document.querySelectorAll('[data-metric]').forEach(button => button.addEventListener('click', () => { const metric=button.dataset.metric, config=configs[metric]; chart.$metric=metric; chart.data.datasets[0].data=values[metric]; chart.data.datasets[0].label=config.label; chart.data.datasets[0].borderColor=config.color; chart.options.scales.y.title.text=config.title; if(metric==='dew'){chart.options.scales.y.min=45;chart.options.scales.y.max=85;chart.options.scales.y.ticks.stepSize=5;} else if(metric==='humidity'){chart.options.scales.y.min=0;chart.options.scales.y.max=100;chart.options.scales.y.ticks.stepSize=10;} else {chart.options.scales.y.min=undefined;chart.options.scales.y.max=undefined;chart.options.scales.y.ticks.stepSize=undefined;} document.querySelectorAll('[data-metric]').forEach(control => {control.classList.toggle('btn-dark',control===button);control.classList.toggle('active',control===button);control.classList.toggle('btn-outline-secondary',control!==button);}); chart.update(); }));
   });
 </script>
 {% endblock %}

@@ -2,6 +2,7 @@ import os
 import hmac
 import requests
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from flask import render_template, request, session, jsonify, redirect, url_for, send_from_directory
 from app import app
 from app.modules import wind_data_functionsc, tide_now, sesh_tide, tidal_data_retrieval
@@ -10,6 +11,25 @@ from app.modules.tide_now import NoTideDataError
 from app.modules.logging_utils import log
 
 OPENWEATHER_TIMEOUT = 10
+BERMUDA_TZ = ZoneInfo("Atlantic/Bermuda")
+
+# Shared by the current-conditions card and compact legend. Chart.js receives
+# this same configuration from the template for its display-only bands.
+DEW_POINT_COMFORT_BANDS = (
+    {"minimum": 80, "maximum": None, "range": "80+", "description": "Indoors, AC on", "color": "#3f454c", "chart_color": "#eef0f2", "text_color": "#ffffff"},
+    {"minimum": 75, "maximum": 80, "range": "75–80", "description": "Extremely uncomfortable", "color": "#7a2731", "text_color": "#ffffff"},
+    {"minimum": 70, "maximum": 75, "range": "70–74", "description": "Very uncomfortable", "color": "#d9554d", "text_color": "#212529"},
+    {"minimum": 65, "maximum": 70, "range": "65–69", "description": "Moderately uncomfortable", "color": "#e8a34c", "text_color": "#212529"},
+    {"minimum": 60, "maximum": 65, "range": "60–64", "description": "Slightly uncomfortable", "color": "#eee28a", "text_color": "#212529"},
+    {"minimum": 55, "maximum": 60, "range": "55–59", "description": "Comfortable", "color": "#75ad87", "text_color": "#212529"},
+    {"minimum": 50, "maximum": 55, "range": "50–54", "description": "Very comfortable", "color": "#7398ca", "text_color": "#ffffff"},
+    {"minimum": -999, "maximum": 50, "range": "0–50", "description": "Dry, Superhuman", "color": "#eef0f2", "text_color": "#212529"},
+)
+
+
+def _dew_point_comfort_band(dew_point):
+    """Return the shared category definition for a dew-point reading."""
+    return next(band for band in DEW_POINT_COMFORT_BANDS if dew_point >= band["minimum"])
 
 
 @app.route("/favicon.ico")
@@ -736,9 +756,12 @@ def dewpoint():
         response = requests.get(url, timeout=OPENWEATHER_TIMEOUT)
         response.raise_for_status()
         data = response.json()
+        current = data.get("current", {})
         hourly_forecasts = [
             {
-                "time": datetime.fromtimestamp(hour["dt"]).strftime("%Y-%m-%d %H:%M"),
+                "time": datetime.fromtimestamp(
+                    hour["dt"], tz=timezone.utc
+                ).astimezone(BERMUDA_TZ).strftime("%Y-%m-%d %H:%M"),
                 "dew_point": hour["dew_point"],
                 "temp": hour.get("temp"),
                 "humidity": hour.get("humidity"),
@@ -754,4 +777,27 @@ def dewpoint():
         log("[dewpointplus] no hourly forecast data returned")
         return "Dew point data temporarily unavailable.", 503
 
-    return render_template("dewpointplus.html", forecasts=hourly_forecasts)
+    try:
+        dew_point = float(current["dew_point"])
+        current_conditions = {
+            # This independent payload lets a garden station replace the current
+            # source later without changing the template or forecast feed.
+            "source": "OpenWeather",
+            "temperature": float(current["temp"]),
+            "humidity": float(current["humidity"]),
+            "dew_point": dew_point,
+            "updated": datetime.fromtimestamp(current["dt"], tz=timezone.utc)
+            .astimezone(BERMUDA_TZ)
+            .strftime("%-I:%M %p"),
+        }
+        current_conditions["comfort"] = _dew_point_comfort_band(dew_point)
+    except (KeyError, TypeError, ValueError, OSError, OverflowError):
+        # The hourly response is still useful if OpenWeather omits current data.
+        current_conditions = None
+
+    return render_template(
+        "dewpointplus.html",
+        forecasts=hourly_forecasts,
+        current_conditions=current_conditions,
+        comfort_bands=DEW_POINT_COMFORT_BANDS,
+    )
