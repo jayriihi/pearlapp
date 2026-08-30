@@ -35,7 +35,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h2 id="forecast-heading" class="h4 mb-0">Three-day forecast</h2><p class="text-muted small mb-0">Hourly conditions</p></div><div class="btn-group metric-controls" role="group" aria-label="Forecast metric"><button type="button" class="btn btn-dark active" data-metric="dew">Dew Point</button><button type="button" class="btn btn-outline-secondary" data-metric="temp">Temperature</button><button type="button" class="btn btn-outline-secondary" data-metric="humidity">Humidity</button></div></div>
     <div class="chart-container"><canvas id="dewPointChart"></canvas></div>
   </section>
-  <section class="comfort-legend mb-4" aria-labelledby="comfort-heading"><h2 id="comfort-heading" class="h6 mb-2">Outdoor activity comfort scale</h2><div class="legend-items">{% for band in comfort_bands %}<div class="legend-item" style="background: {{ band.color }}; color: {{ band.text_color }};"><span>{{ band.range }} — {{ band.description }}</span></div>{% endfor %}</div></section>
+  <section class="comfort-legend mb-4" aria-labelledby="comfort-heading"><h2 id="comfort-heading" class="h6 mb-2">Outdoor activity comfort scale</h2><div class="legend-items">{% for band in comfort_bands %}{% set legend_color = band.chart_color if band.chart_color else band.color %}{% set legend_text_color = '#212529' if band.chart_color else band.text_color %}<div class="legend-item" style="background: {{ legend_color }}; color: {{ legend_text_color }};"><span>{{ band.range }} — {{ band.description }}</span></div>{% endfor %}</div></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
