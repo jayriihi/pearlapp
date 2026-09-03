@@ -53,23 +53,25 @@ h1::after{
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
 }
 .periodMenu .station-label{
   font-weight: 600;
   color: inherit;
 }
-.periodMenu .station-anchor{
-  position: relative;
-  display: inline-flex;
-}
 .periodMenu .station-toggle{
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   padding: 0 2px;
   cursor: pointer;
+  font: inherit;
+  text-align: inherit;
   line-height: 1;
+  min-height: 44px;
+  margin: -13px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .periodMenu .station-toggle:hover{ color: #46566d; }
 .periodMenu .station-toggle:focus{
@@ -79,7 +81,39 @@ h1::after{
 }
 .periodMenu .station-toggle .chev{
   display: inline-block;
+  color: var(--muted);
   transform: translateY(1px);
+}
+.periodMenu .refresh-button{
+  position: absolute;
+  top: -13px;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.periodMenu .refresh-button svg{
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.periodMenu .refresh-button:hover{ color: #46566d; }
+.periodMenu .refresh-button:focus{
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(94,112,138,.22);
+  border-radius: 6px;
 }
 .periodMenu .station-menu{
   position: fixed;
@@ -663,21 +697,25 @@ body  { background: var(--bg) !important; }
   <div class="periodMenu">
     <center>
       <p>
-        Recent winds at -
         <span class="station-select">
-          <span class="station-label">{{ station_label }}</span>
-          <span class="station-anchor">
-            <button class="station-toggle" type="button" aria-haspopup="true" aria-expanded="false">
-              <span class="chev">▾</span>
-            </button>
-            <div class="station-menu" role="menu">
-              {% for station in stations %}
-                <a role="menuitem" href="{{ url_for('winds', hours=H, station=station.key) }}">{{ station.label }}</a>
-              {% endfor %}
-            </div>
-          </span>
+          <button class="station-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Select weather station">
+            Recent winds at - <span class="station-label">{{ station_label }}</span><span class="chev">▾</span>
+          </button>
+          <div class="station-menu" role="menu">
+            {% for station in stations %}
+              <a role="menuitem" href="{{ url_for('winds', hours=H, station=station.key) }}">{{ station.label }}</a>
+            {% endfor %}
+          </div>
         </span>
       </p>
+      <button class="refresh-button" type="button" aria-label="Refresh weather data" onclick="window.location.reload();">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M20 11a8 8 0 0 0-14.6-4.6L3 9"></path>
+          <path d="M3 4v5h5"></path>
+          <path d="M4 13a8 8 0 0 0 14.6 4.6L21 15"></path>
+          <path d="M21 20v-5h-5"></path>
+        </svg>
+      </button>
       <div class="btn-group">
         <a class="btn btn-primary {{ 'active' if H==1 else '' }}"
            href="{{ url_for('winds', hours=1, station=station_key) if station_param else url_for('winds', hours=1) }}">1 hour</a>

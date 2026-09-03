@@ -284,8 +284,8 @@ def winds(hours: int):
     station_param = raw_station if raw_station in wind_data_functionsc.STATIONS else None
     station_label = wind_data_functionsc.STATIONS[station_key]["label"]
     stations = [
-        {"key": key, "label": meta["label"]}
-        for key, meta in wind_data_functionsc.STATIONS.items()
+        {"key": key, "label": wind_data_functionsc.STATIONS[key]["label"]}
+        for key in ("pearl", "nmb", "model", "crescent")
     ]
 
     wind_available = True
