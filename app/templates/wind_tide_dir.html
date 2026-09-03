@@ -821,6 +821,42 @@ body  { background: var(--bg) !important; }
   })();
 </script>
 
+<script>
+  (function() {
+    const refreshAfterMs = 3 * 60 * 1000;
+    let hiddenAt = null;
+    let reloadRequested = false;
+
+    function refreshIfStale() {
+      if (reloadRequested || hiddenAt === null) return;
+
+      const hiddenFor = Date.now() - hiddenAt;
+      hiddenAt = null;
+
+      if (hiddenFor > refreshAfterMs) {
+        reloadRequested = true;
+        window.location.reload();
+      }
+    }
+
+    document.addEventListener("visibilitychange", function() {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === "visible") {
+        refreshIfStale();
+      }
+    });
+
+    window.addEventListener("pagehide", function() {
+      hiddenAt = Date.now();
+    });
+
+    window.addEventListener("pageshow", function(event) {
+      if (event.persisted) refreshIfStale();
+    });
+  })();
+</script>
+
 
 
 
