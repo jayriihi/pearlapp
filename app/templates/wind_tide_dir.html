@@ -672,8 +672,9 @@ body  { background: var(--bg) !important; }
 }
 
 .stat .value{
-  font-size: 0.95rem;
-  line-height: 1.2;
+  font-size: 1.09rem;
+  font-weight: 500;
+  line-height: 1.045;
 }
 
 .stat .value.value-lines{
@@ -685,7 +686,8 @@ body  { background: var(--bg) !important; }
 
 @media (max-width: 640px){
   .stat .value{
-    font-size: 0.82rem;
+    font-size: 0.94rem;
+    line-height: 1.047;
   }
 }
 
@@ -708,7 +710,7 @@ body  { background: var(--bg) !important; }
           </div>
         </span>
       </p>
-      <button class="refresh-button" type="button" aria-label="Refresh weather data" onclick="window.location.reload();">
+      <button class="refresh-button" type="button" aria-label="Refresh weather data" onclick="window.refreshPearlPage();">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M20 11a8 8 0 0 0-14.6-4.6L3 9"></path>
           <path d="M3 4v5h5"></path>
@@ -835,7 +837,7 @@ body  { background: var(--bg) !important; }
 
       if (hiddenFor > refreshAfterMs) {
         reloadRequested = true;
-        window.location.reload();
+        window.refreshPearlPage();
       }
     }
 
