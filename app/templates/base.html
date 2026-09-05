@@ -4,9 +4,28 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script>
+      const pearlScrollResetKey = 'pearl_scroll_to_top_after_refresh';
+
+      if (sessionStorage.getItem(pearlScrollResetKey)) {
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+        window.addEventListener('pageshow', function() {
+          window.scrollTo(0, 0);
+          window.requestAnimationFrame(function() {
+            window.scrollTo(0, 0);
+            if ('scrollRestoration' in history) history.scrollRestoration = 'auto';
+          });
+          sessionStorage.removeItem(pearlScrollResetKey);
+        }, { once: true });
+      }
+
       window.refreshPearlPage = function() {
         if (window.pearlRefreshPending) return;
         window.pearlRefreshPending = true;
+
+        sessionStorage.setItem(pearlScrollResetKey, '1');
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        window.scrollTo(0, 0);
 
         const viewport = document.querySelector('meta[name="viewport"]');
 
