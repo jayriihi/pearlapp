@@ -640,21 +640,11 @@ body  { background: var(--bg) !important; }
 
 @media (max-width:640px){
   .page-wrap.wd-card .chart-wrap{ padding:8px; border-radius:12px; }
-  .page-wrap.wd-card .chartBox{ padding:4px; border-radius:10px; height:68vh; }
-}
-
-
-/* Make the embedded wind-dir card tall on phones */
-@media (max-width:640px){
   .page-wrap.wd-card .chartBox{
-    /* pick one of these two styles: */
-
-    /* A) viewport-based height (good for the vertical plot) */
-    height: 68dvh !important;   /* iOS/modern */
-    height: 68vh  !important;   /* fallback */
-
-    /* or, B) clamp to keep a sensible min/max: */
-    /* height: clamp(360px, 68dvh, 720px) !important; */
+    padding:4px;
+    border-radius:10px;
+    height:68vh !important;     /* fallback */
+    height:68dvh !important;    /* iOS/modern */
   }
 }
 
@@ -1270,6 +1260,14 @@ body  { background: var(--bg) !important; }
         offset: false,
         min: yMin,
         max: yMax,
+        afterBuildTicks: (scale) => {
+          const ticks = [];
+          const fiveMinutes = 5 * 60 * 1000;
+          for (let t = yMax.getTime(); t >= yMin.getTime(); t -= fiveMinutes) {
+            ticks.push({ value: t });
+          }
+          scale.ticks = ticks;
+        },
         time: {
           unit: 'minute',
           stepSize: 5,
@@ -1293,13 +1291,6 @@ body  { background: var(--bg) !important; }
             if (mins < 60) return `-${mins}`;
             const h = Math.floor(mins / 60), m = mins % 60;
             return `-${h}:${String(m).padStart(2, '0')}`;
-          },
-          afterBuildTicks: () => {
-            const out = [], FIVE = 5 * 60 * 1000;
-            for (let t = yMax.getTime(); t >= yMin.getTime(); t -= FIVE) {
-              out.push({ value: t });
-            }
-            return out;
           }
         }
       }
