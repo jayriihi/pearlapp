@@ -868,6 +868,7 @@ body  { background: var(--bg) !important; }
   // range flags from Jinja
   const H       = {{ H }};                                   // already set at top
   const isLong  = {{ (H >= 3) | tojson }};
+  const isMobileOneHour = H === 1 && window.matchMedia('(max-width: 640px)').matches;
   const TENSION = 0.3;
 
   // data (use tojson, not |safe)
@@ -905,7 +906,19 @@ body  { background: var(--bg) !important; }
     },
     elements: { point: { radius: 2, hoverRadius: 3 } },
     scales: {
-      x: { grid:{ color: GRID }, ticks:{ color: AQUA, autoSkip:true, maxTicksLimit: isLong ? 12 : 8 } },
+      x: {
+        grid:{
+          color: (ctx) => isMobileOneHour && ctx.tick && ctx.tick.value % 2 !== 0 ? 'transparent' : GRID
+        },
+        ticks:{
+          color: AQUA,
+          autoSkip: !isMobileOneHour,
+          maxTicksLimit: isLong ? 12 : 8,
+          callback: function(value) {
+            return !isMobileOneHour || value % 2 === 0 ? this.getLabelForValue(value) : '';
+          }
+        }
+      },
       y: {
         grid:{ color: GRID }, ticks:{ color: AQUA, maxTicksLimit: isLong ? 7 : 6 },
         beginAtZero:true,
