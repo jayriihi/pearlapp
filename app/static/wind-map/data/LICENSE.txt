@@ -1,0 +1,19 @@
+Map data copyright OpenStreetMap contributors.
+
+This Bermuda geographic database is derived from OpenStreetMap and is made
+available under the Open Data Commons Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/
+
+You are free to copy, distribute, transmit and adapt this geographic database,
+subject to the ODbL's attribution, share-alike and access requirements.
+The linked licence text governs; this notice is not a replacement for it.
+
+Attribution: © OpenStreetMap contributors
+https://www.openstreetmap.org/copyright
+
+The entire derived geographic database is downloadable at /wind-map/geography.
+Source and transformation information is provided in metadata.json and in the
+repository's tools/bermuda-map/ directory.
+
+Pearl's independently supplied station position and measurements are not part
+of this derived OpenStreetMap geographic database.

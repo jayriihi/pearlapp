@@ -46,3 +46,7 @@ def maintenance_mode():
     return response
 
 from app import views
+
+from app.wind_map import wind_map_bp
+
+app.register_blueprint(wind_map_bp)

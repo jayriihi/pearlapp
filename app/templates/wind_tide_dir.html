@@ -449,6 +449,13 @@ h1::after{
   padding: 8px 10px;                        /* compact padding */
 }
 
+.stat.stat-map{ color:inherit; text-decoration:none; min-width:0; }
+.stat.stat-map:hover{ border-color:rgba(255,255,255,.3); }
+.stat.stat-map:focus-visible{ outline:2px solid var(--aqua); outline-offset:2px; }
+.stat-map .label{ white-space:nowrap; }
+.stat-map .map-hint{ color:var(--aqua); text-decoration:underline; text-underline-offset:2px; }
+@media(max-width:360px){ .stat-map .map-hint{ font-size:.7em; } }
+
 .stat--compact .value{
   line-height: 1.2;
 }
@@ -745,13 +752,19 @@ body  { background: var(--bg) !important; }
           <div>Min {{ (past_hour_avg_wind_min|round(1)) if wind_available and past_hour_avg_wind_min is not none else '—' }}</div>
         </div>
       </div>
+      {% set link_wind_map = station_key == 'pearl' and H in [1, 3, 8] %}
+      {% if link_wind_map %}
+      <a class="stat stat-map" href="{{ url_for('wind_map.page') }}">
+        <div class="label">Dir <span class="map-hint">View map ›</span></div>
+      {% else %}
       <div class="stat">
         <div class="label">Dir</div>
+      {% endif %}
         <div class="value value-lines">
           <div>Cur {{ (cur_wind_dir|round(0)|int) if wind_available and cur_wind_dir is not none else '—' }}°</div>
           <div>Avg {{ (avg_wind_dir|round(0)|int) if wind_available and avg_wind_dir is not none else '—' }}°</div>
         </div>
-      </div>
+      {% if link_wind_map %}</a>{% else %}</div>{% endif %}
 
     </div>
 
