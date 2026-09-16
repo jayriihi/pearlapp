@@ -6,6 +6,11 @@
   const compass = degrees => COMPASS[Math.round(normalize(degrees) / 22.5) % 16];
   const whole = degrees => Math.round(normalize(degrees)) % 360;
   const setText = (node, text) => { if (node.textContent !== text) node.textContent = text; };
+  const track = eventName => {
+    try {
+      if (typeof window.gtag === 'function') window.gtag('event', eventName);
+    } catch (_) { /* Analytics must never affect the map. */ }
+  };
 
   class PearlWindController {
     static normalize = normalize;
@@ -95,15 +100,19 @@
     }
 
     enterExplore() {
+      const enteringFromLive = this.mode === 'live';
       this.mode = 'explore';
       this.exploreBearing = this.lastObservation?.direction_deg ?? 0;
       this.pauseRequests();
       this.render();
+      if (enteringFromLive) track('wind_map_explore_open');
     }
 
     enterLive() {
+      const returningFromExplore = this.mode === 'explore';
       this.mode = 'live';
       this.resumeLive();
+      if (returningFromExplore) track('wind_map_live_return');
     }
 
     resumeLive() {

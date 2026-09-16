@@ -30,10 +30,22 @@ class WindMapTests(unittest.TestCase):
         self.assertNotIn('chart.js', html)
         self.assertNotIn('bootstrap', html)
         self.assertNotIn('Pearl LIVE', html)
+        self.assertEqual(html.count('googletagmanager.com/gtag/js?id=G-BTFXTC61KN'), 1)
+        self.assertEqual(html.count("gtag('config', 'G-BTFXTC61KN')"), 1)
         self.assertIn(str(PEARL_STATION['latitude']), html)
         self.assertIn(str(PEARL_STATION['longitude']), html)
         self.assertEqual(PEARL_STATION['bearing_reference'], 'true north')
         self.assertEqual(PEARL_STATION['magnetic_correction_deg'], 0)
+
+    def test_all_routed_standalone_pages_use_the_shared_analytics_include(self):
+        templates = Path(app.root_path) / app.template_folder
+        analytics = (templates / '_analytics.html').read_text()
+        self.assertIn('G-BTFXTC61KN', analytics)
+        for name in ('base.html', 'wind_map.html', 'chart.html', 'wind_dir.html',
+                     'tidal_difference.html', 'dual_tide_plot.html'):
+            with self.subTest(template=name):
+                source = (templates / name).read_text()
+                self.assertEqual(source.count('{% include "_analytics.html" %}'), 1)
 
     def test_geography_download_is_complete_and_attributed(self):
         response = self.client.get('/wind-map/geography')
