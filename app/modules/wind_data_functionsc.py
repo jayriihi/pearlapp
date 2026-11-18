@@ -10,7 +10,8 @@ from app.modules.logging_utils import log
 # Shared Google Sheet config
 GSHEET_ID = "1FIqEkMQv1468IU5gm_CrF1Vr6Ir1NF6PTiFDgcoGFo8"
 NUM_ROWS = 2016
-SESSION_NUM_ROWS = NUM_ROWS * 4
+DASHBOARD_NUM_ROWS = 123  # Three header rows + 120 five-minute readings (10 hours)
+SESSION_NUM_ROWS = 8064
 # Pearl tab gid copied from sheet URL (?gid=1815185817)
 SHEET_GIDS = {"Pearl": 1815185817}  # known gid mapping; others fall back to gviz
 
@@ -269,7 +270,7 @@ def get_window_strings(hours):
     return start, end
 
 
-def _pearl_quik(hours, station_key=None):
+def _pearl_quik(hours, station_key=None, *, sheet_df=None):
     """
     Shared helper for 1/3/8hr cards.
 
@@ -283,7 +284,9 @@ def _pearl_quik(hours, station_key=None):
     sheet = get_station_sheet(station_key)
 
     # Use the same window + sheet as everything else
-    sesh = fetch_sheet_window_df(start, end, sheet_name=sheet)
+    sesh = fetch_sheet_window_df(
+        start, end, sheet_name=sheet, sheet_df=sheet_df, num_rows=DASHBOARD_NUM_ROWS
+    )
 
     if sesh is None or sesh.empty:
         log(f"[_pearl_quik] empty slice for {hours}h, {start} → {end}, sheet={sheet}")
@@ -326,15 +329,15 @@ def pearl_8hr_quik(station_key=None):
     return _pearl_quik(8, station_key=station_key)
 
 
-def get_wind_data(hours, station_key=None):
-    return _pearl_quik(hours, station_key=station_key)
+def get_wind_data(hours, station_key=None, *, sheet_df=None):
+    return _pearl_quik(hours, station_key=station_key, sheet_df=sheet_df)
 
 
 def _gviz_url(sheet_name, num_rows=NUM_ROWS):
     cache_bust = int(datetime.now(pytz.utc).timestamp() * 1000)
     return (
         f"https://docs.google.com/spreadsheets/d/{GSHEET_ID}/gviz/tq"
-        f"?tqx=out:csv&sheet={sheet_name}&range=A1:D{num_rows}&cb={cache_bust}"
+        f"?tqx=out:csv&headers=3&sheet={sheet_name}&range=A1:D{num_rows}&cb={cache_bust}"
     )
 
 
@@ -373,7 +376,9 @@ def fetch_sheet_csv(sheet_name, num_rows=NUM_ROWS):
             resp.raise_for_status()
             df = pd.read_csv(
                 io.StringIO(resp.text),
-                skiprows=3,
+                # gviz combines the three Sheet headers into one CSV header.
+                # Export preserves the original three rows.
+                skiprows=1 if source == "gviz" else 3,
                 names=["Date/Time", "wind_spd", "wind_max", "wind_dir"],
             )
             latest_ts = pd.to_datetime(df["Date/Time"], errors="coerce").max()
@@ -407,10 +412,14 @@ def fetch_sheet_csv(sheet_name, num_rows=NUM_ROWS):
     raise RuntimeError("Sheet fetch failed without exception")
 
 
-def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_name=None):
+def fetch_sheet_window_df(
+    string_start_time=None, string_end_time=None, sheet_name=None, *,
+    sheet_df=None, num_rows=NUM_ROWS,
+):
     """
     Return a time-sliced DataFrame with index=datetime and columns:
     wind_spd, wind_max, wind_dir. Uses the default station by default.
+    Supply sheet_df to reuse a raw download without mutating it.
     """
     if sheet_name is None:
         sheet_name = get_station_sheet(DEFAULT_STATION_KEY)
@@ -422,7 +431,11 @@ def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_na
         string_start_time = one_hour_ago_bda.strftime("%Y-%m-%d %H:%M")
         string_end_time = now_bda.strftime("%Y-%m-%d %H:%M")
 
-    df = fetch_sheet_csv(sheet_name)
+    # A supplied request-local frame avoids downloading the same sheet again.
+    df = (
+        fetch_sheet_csv(sheet_name, num_rows=num_rows)
+        if sheet_df is None else sheet_df.copy()
+    )
     df["Date/Time"] = pd.to_datetime(df["Date/Time"], errors="coerce")
     df = df.dropna(subset=["Date/Time"]).set_index("Date/Time").sort_index()
 
@@ -442,7 +455,7 @@ def fetch_sheet_window_df(string_start_time=None, string_end_time=None, sheet_na
     return sesh.sort_index()
 
 
-def wind_dir_3hours(station_key=None):
+def wind_dir_3hours(station_key=None, *, sheet_df=None):
     """
     Returns (labels, wind_dirs) for the vertical 3-hr direction history chart.
     Uses the same sheet + window as the 3-hr speed card.
@@ -451,7 +464,9 @@ def wind_dir_3hours(station_key=None):
     sheet = get_station_sheet(station_key)
     log(f"[wind_dir_3hours] window BDA: {start} → {end}, sheet={sheet}")
 
-    df = fetch_sheet_window_df(start, end, sheet_name=sheet).sort_index()
+    df = fetch_sheet_window_df(
+        start, end, sheet_name=sheet, sheet_df=sheet_df, num_rows=DASHBOARD_NUM_ROWS
+    ).sort_index()
     log(f"[wind_dir_3hours] fetched rows: {len(df)}")
     if df.empty:
         log("[wind_dir_3hours] empty slice")

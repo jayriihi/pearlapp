@@ -828,17 +828,31 @@ body  { background: var(--bg) !important; }
 
 <script>
   (function() {
-    const refreshAfterMs = 3 * 60 * 1000;
+    const refreshAfterMs = 60 * 1000;
+    const initializedAt = Date.now();
     let hiddenAt = null;
+    let pageShown = false;
+    let lastResumeAt = null;
     let reloadRequested = false;
+    let awaitingResume = document.visibilityState === "hidden";
 
-    function refreshIfStale() {
-      if (reloadRequested || hiddenAt === null) return;
+    function recordHidden() {
+      if (hiddenAt === null) hiddenAt = Date.now();
+      awaitingResume = true;
+    }
 
-      const hiddenFor = Date.now() - hiddenAt;
+    function refreshIfStale(resumeObserved = false) {
+      if (reloadRequested || document.visibilityState !== "visible") return;
+      // Focus alone does not prove a continuously visible page was backgrounded.
+      if (!awaitingResume && !resumeObserved) return;
+
+      const absentSince = hiddenAt === null ? (lastResumeAt ?? initializedAt) : hiddenAt;
+      const resumedAt = Date.now();
       hiddenAt = null;
+      awaitingResume = false;
+      lastResumeAt = resumedAt;
 
-      if (hiddenFor > refreshAfterMs) {
+      if (resumedAt - absentSince > refreshAfterMs) {
         reloadRequested = true;
         window.refreshPearlPage();
       }
@@ -846,18 +860,22 @@ body  { background: var(--bg) !important; }
 
     document.addEventListener("visibilitychange", function() {
       if (document.visibilityState === "hidden") {
-        hiddenAt = Date.now();
+        recordHidden();
       } else if (document.visibilityState === "visible") {
-        refreshIfStale();
+        refreshIfStale(true);
       }
     });
 
-    window.addEventListener("pagehide", function() {
-      hiddenAt = Date.now();
-    });
+    window.addEventListener("pagehide", recordHidden);
 
     window.addEventListener("pageshow", function(event) {
-      if (event.persisted) refreshIfStale();
+      // The initial pageshow is not a return from the background.
+      refreshIfStale(event.persisted || pageShown);
+      pageShown = true;
+    });
+
+    window.addEventListener("focus", function() {
+      refreshIfStale();
     });
   })();
 </script>

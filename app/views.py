@@ -196,14 +196,14 @@ def get_tide_snapshot():
     }
 
 
-def get_wind_dir_history(station_key=None):
+def get_wind_dir_history(station_key=None, *, sheet_df=None):
     """
     3h wind direction history, JSON-friendly.
     Returns (labels, dirs) or ([], []) on error.
     """
     try:
         wd_labels_raw, wd_dirs_raw = wind_data_functionsc.wind_dir_3hours(
-            station_key=station_key
+            station_key=station_key, sheet_df=sheet_df
         )
         wd_labels = [str(t) for t in wd_labels_raw]                 # ISO strings are fine
         wd_dirs = [float(d) for d in wd_dirs_raw if d is not None]  # 0–360 floats
@@ -213,7 +213,7 @@ def get_wind_dir_history(station_key=None):
         return [], []
 
 
-def fetch_winds(hours: int, station_key=None):
+def fetch_winds(hours: int, station_key=None, *, sheet_df=None):
     """
     Fetch wind data for the given window length (hours).
     Returns (labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd).
@@ -228,7 +228,7 @@ def fetch_winds(hours: int, station_key=None):
             cur_spd,
             labels,
             series,
-        ) = wind_data_functionsc.get_wind_data(hours, station_key=station_key)
+        ) = wind_data_functionsc.get_wind_data(hours, station_key=station_key, sheet_df=sheet_df)
     except NoWindDataError:
         raise
     except Exception as e:
@@ -288,6 +288,7 @@ def winds(hours: int):
         for key in ("pearl", "nmb", "model", "crescent")
     ]
 
+    dashboard_df = None
     wind_available = True
     wind_error = None
 
@@ -296,9 +297,18 @@ def winds(hours: int):
     avg = maxv = minv = avg_dir = cur_dir = cur_spd = None
 
     try:
+        try:
+            dashboard_df = wind_data_functionsc.fetch_sheet_csv(
+                wind_data_functionsc.get_station_sheet(station_key),
+                num_rows=wind_data_functionsc.DASHBOARD_NUM_ROWS,
+            )
+        except Exception as e:
+            log(f"[fetch_winds] unexpected error: {e}")
+            raise NoWindDataError("Unexpected error retrieving wind data") from e
         labels, values, avg, maxv, minv, avg_dir, cur_dir, cur_spd = fetch_winds(
             hours,
             station_key=station_key,
+            sheet_df=dashboard_df,
         )
     except NoWindDataError as e:
         wind_available = False
@@ -365,7 +375,12 @@ def winds(hours: int):
         tide["next_peak_state_disp"] = None
 
     # 3h wind direction history for the vertical chart
-    wd_labels, wd_dirs = get_wind_dir_history(station_key=station_key)
+    if dashboard_df is None:
+        wd_labels, wd_dirs = [], []
+    else:
+        wd_labels, wd_dirs = get_wind_dir_history(
+            station_key=station_key, sheet_df=dashboard_df
+        )
 
     scalar_mean = None
     if hours == 3 and wd_dirs:
