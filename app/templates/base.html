@@ -6,7 +6,9 @@
     <script>
       const pearlScrollResetKey = 'pearl_scroll_to_top_after_refresh';
 
-      if (sessionStorage.getItem(pearlScrollResetKey)) {
+      let pearlScrollResetPending = false;
+      try { pearlScrollResetPending = !!sessionStorage.getItem(pearlScrollResetKey); } catch (_) {}
+      if (pearlScrollResetPending) {
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
         window.addEventListener('pageshow', function() {
@@ -15,7 +17,7 @@
             window.scrollTo(0, 0);
             if ('scrollRestoration' in history) history.scrollRestoration = 'auto';
           });
-          sessionStorage.removeItem(pearlScrollResetKey);
+          try { sessionStorage.removeItem(pearlScrollResetKey); } catch (_) {}
         }, { once: true });
       }
 
@@ -23,7 +25,7 @@
         if (window.pearlRefreshPending) return;
         window.pearlRefreshPending = true;
 
-        sessionStorage.setItem(pearlScrollResetKey, '1');
+        try { sessionStorage.setItem(pearlScrollResetKey, '1'); } catch (_) {}
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
         window.scrollTo(0, 0);
 

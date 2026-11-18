@@ -213,6 +213,22 @@ def get_wind_dir_history(station_key=None, *, sheet_df=None):
         return [], []
 
 
+def _latest_displayed_wind_epoch_ms(sheet_df):
+    """Interpret Sheet wall time in Bermuda, never in the web server's timezone."""
+    try:
+        import pandas as pd
+        latest = pd.to_datetime(sheet_df["Date/Time"], errors="coerce").max()
+        if pd.isna(latest):
+            return None
+        latest = latest.to_pydatetime()
+        if latest.tzinfo is None:
+            # Repeated/nonexistent DST wall times cannot identify an observation safely.
+            latest = wind_data_functionsc.bda_tz.localize(latest, is_dst=None)
+        return int(latest.astimezone(timezone.utc).timestamp() * 1000)
+    except Exception:
+        return None
+
+
 def fetch_winds(hours: int, station_key=None, *, sheet_df=None):
     """
     Fetch wind data for the given window length (hours).
@@ -400,6 +416,9 @@ def winds(hours: int):
         stations=stations,
         labels=labels,
         values=values,
+        latest_wind_observation_ms=(
+            _latest_displayed_wind_epoch_ms(dashboard_df) if wind_available else None
+        ),
         past_hour_avg_wind_spd=avg,
         past_hour_avg_wind_max=maxv,
         past_hour_avg_wind_min=minv,

@@ -1,5 +1,10 @@
 """Dashboard retrieval checks; all HTTP and tide data are mocked."""
 import unittest
+import os
+import json
+import re
+import time
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 
@@ -53,6 +58,13 @@ class DashboardWindTests(unittest.TestCase):
         self.assertIn('wind', result.get_data(as_text=True).lower())
         logs = '\n'.join(str(call.args[0]) for call in log.call_args_list)
         self.assertNotIn('[winds timing]', logs)
+        bootstrap = re.search(
+            r'PearlDashboard.startObservationRefresh\(\s*window,\s*document,\s*(null|[0-9]+),\s*("[^"]+")',
+            result.get_data(as_text=True),
+        )
+        self.assertIsNotNone(bootstrap)
+        self.assertEqual(json.loads(bootstrap.group(1)), render.call_args.kwargs['latest_wind_observation_ms'])
+        self.assertEqual(json.loads(bootstrap.group(2)), station)
         return render.call_args.kwargs, http
 
     def assert_ranges(self, http, rows):
@@ -74,6 +86,7 @@ class DashboardWindTests(unittest.TestCase):
                     self.assertEqual(parse_qs(urlparse(http.call_args.args[0]).query)['sheet'], [config['sheet']])
                     self.assertEqual(context['station_key'], station)
                     self.assertTrue(context['wind_available'])
+                    self.assertEqual(context['latest_wind_observation_ms'], int(NOW.timestamp() * 1000))
                     chronological = data.sort_values('Date/Time').set_index('Date/Time')
                     start = pd.Timestamp(NOW.replace(tzinfo=None)) - pd.Timedelta(hours=hours, minutes=5)
                     selected = chronological.loc[start:]
@@ -109,6 +122,7 @@ class DashboardWindTests(unittest.TestCase):
             with self.subTest(latest=data['Date/Time'].max()):
                 context, http = self.route(1, responses=[response(data), response(data, 'export')])
                 self.assertFalse(context['wind_available'])
+                self.assertIsNone(context['latest_wind_observation_ms'])
                 self.assertEqual(context['wd_dirs'], [])
                 self.assert_ranges(http, 123)
 
@@ -160,6 +174,47 @@ class DashboardWindTests(unittest.TestCase):
             parsed = wind.fetch_sheet_csv('Pearl', num_rows=123)
         self.assertEqual(http.call_count, 2)
         self.assertEqual(pd.to_datetime(parsed['Date/Time']).max(), gviz_data['Date/Time'].max())
+
+    def test_dashboard_script_asset_is_served(self):
+        result = app.test_client().get('/static/pearl-dashboard.js?v=1')
+        self.assertEqual(result.status_code, 200)
+        self.assertIn(b'startObservationRefresh', result.data)
+        result.close()
+
+    def test_observation_epoch_uses_bermuda_independent_of_host_timezone(self):
+        cases = (
+            ('2026-11-18 07:02', '2026-11-18T11:02:00+00:00'),
+            ('2026-07-18 07:02', '2026-07-18T10:02:00+00:00'),
+            ('2026-11-18 00:01', '2026-11-18T04:01:00+00:00'),
+            ('2026-07-18 23:59', '2026-07-19T02:59:00+00:00'),
+        )
+        original_tz = os.environ.get('TZ')
+        try:
+            for host_tz in ('UTC', 'Atlantic/Bermuda', 'Asia/Tokyo'):
+                os.environ['TZ'] = host_tz
+                time.tzset()
+                for wall_time, expected in cases:
+                    with self.subTest(host=host_tz, wall_time=wall_time):
+                        data = pd.DataFrame({'Date/Time': [wall_time]})
+                        self.assertEqual(views._latest_displayed_wind_epoch_ms(data),
+                                         int(datetime.fromisoformat(expected).timestamp() * 1000))
+        finally:
+            if original_tz is None:
+                os.environ.pop('TZ', None)
+            else:
+                os.environ['TZ'] = original_tz
+            time.tzset()
+
+    def test_observation_epoch_handles_dst_ambiguity_missing_and_aware_timestamps(self):
+        for wall_time in ('2026-11-01 01:30', '2026-03-08 02:30', 'bad', None):
+            with self.subTest(wall_time=wall_time):
+                self.assertIsNone(views._latest_displayed_wind_epoch_ms(
+                    pd.DataFrame({'Date/Time': [wall_time]})))
+        self.assertIsNone(views._latest_displayed_wind_epoch_ms(None))
+        self.assertIsNone(views._latest_displayed_wind_epoch_ms(pd.DataFrame({'Date/Time': []})))
+        aware = pd.DataFrame({'Date/Time': [pd.Timestamp('2026-11-18T07:02:00-04:00')]})
+        self.assertEqual(views._latest_displayed_wind_epoch_ms(aware),
+                         int(datetime(2026, 11, 18, 11, 2, tzinfo=timezone.utc).timestamp() * 1000))
 
     def test_shared_frame_is_not_mutated_and_legacy_callers_still_work(self):
         data = frame()

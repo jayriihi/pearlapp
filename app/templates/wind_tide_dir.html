@@ -826,58 +826,13 @@ body  { background: var(--bg) !important; }
   })();
 </script>
 
+<script src="{{ url_for('static', filename='pearl-dashboard.js') }}?v=1"></script>
 <script>
-  (function() {
-    const refreshAfterMs = 60 * 1000;
-    const initializedAt = Date.now();
-    let hiddenAt = null;
-    let pageShown = false;
-    let lastResumeAt = null;
-    let reloadRequested = false;
-    let awaitingResume = document.visibilityState === "hidden";
-
-    function recordHidden() {
-      if (hiddenAt === null) hiddenAt = Date.now();
-      awaitingResume = true;
-    }
-
-    function refreshIfStale(resumeObserved = false) {
-      if (reloadRequested || document.visibilityState !== "visible") return;
-      // Focus alone does not prove a continuously visible page was backgrounded.
-      if (!awaitingResume && !resumeObserved) return;
-
-      const absentSince = hiddenAt === null ? (lastResumeAt ?? initializedAt) : hiddenAt;
-      const resumedAt = Date.now();
-      hiddenAt = null;
-      awaitingResume = false;
-      lastResumeAt = resumedAt;
-
-      if (resumedAt - absentSince > refreshAfterMs) {
-        reloadRequested = true;
-        window.refreshPearlPage();
-      }
-    }
-
-    document.addEventListener("visibilitychange", function() {
-      if (document.visibilityState === "hidden") {
-        recordHidden();
-      } else if (document.visibilityState === "visible") {
-        refreshIfStale(true);
-      }
-    });
-
-    window.addEventListener("pagehide", recordHidden);
-
-    window.addEventListener("pageshow", function(event) {
-      // The initial pageshow is not a return from the background.
-      refreshIfStale(event.persisted || pageShown);
-      pageShown = true;
-    });
-
-    window.addEventListener("focus", function() {
-      refreshIfStale();
-    });
-  })();
+  PearlDashboard.startObservationRefresh(
+    window, document,
+    {{ latest_wind_observation_ms | default(none) | tojson }},
+    {{ station_key | tojson }}
+  );
 </script>
 
 
@@ -899,7 +854,6 @@ body  { background: var(--bg) !important; }
   // range flags from Jinja
   const H       = {{ H }};                                   // already set at top
   const isLong  = {{ (H >= 3) | tojson }};
-  const isMobileOneHour = H === 1 && window.matchMedia('(max-width: 640px)').matches;
   const TENSION = 0.3;
 
   // data (use tojson, not |safe)
@@ -938,16 +892,33 @@ body  { background: var(--bg) !important; }
     elements: { point: { radius: 2, hoverRadius: 3 } },
     scales: {
       x: {
-        grid:{
-          color: (ctx) => isMobileOneHour && ctx.tick && ctx.tick.value % 2 !== 0 ? 'transparent' : GRID
+        type: 'category',
+        grid:{ color: GRID },
+        afterBuildTicks: function(scale) {
+          if (H === 1) {
+            const last = windLabels.length - 1;
+            scale.ticks = windLabels.map((_, value) => ({ value }))
+              .filter(tick => (last - tick.value) % 2 === 0);
+            return;
+          }
+          const ctx = scale.chart.ctx;
+          ctx.save();
+          ctx.font = Chart.helpers.toFont(scale.options.ticks.font, Chart.defaults.font).string;
+          // Leave conservative space for the Y axis and edge-label padding.
+          const width = Math.max(0, Math.min(scale.width, scale.chart.width) - 80);
+          const indices = PearlDashboard.selectWindTickIndices(
+            windLabels, width, text => ctx.measureText(text).width, isLong ? 12 : 8
+          );
+          ctx.restore();
+          scale.ticks = indices.map(value => ({ value }));
         },
         ticks:{
           color: AQUA,
-          autoSkip: !isMobileOneHour,
-          maxTicksLimit: isLong ? 12 : 8,
-          callback: function(value) {
-            return !isMobileOneHour || value % 2 === 0 ? this.getLabelForValue(value) : '';
-          }
+          autoSkip: false,
+          maxRotation: H === 1 ? 50 : 0,
+          minRotation: H === 1 ? 50 : 0,
+          align: 'inner',
+          callback: function(value) { return this.getLabelForValue(value); }
         }
       },
       y: {
